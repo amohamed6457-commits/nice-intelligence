@@ -309,7 +309,7 @@ def generate_assessment_pdf(
 
 # ── Title ─────────────────────────────────────────────────
 st.title("💊 NICE Technology Appraisal Intelligence")
-st.markdown("*1,439 pharmaceutical appraisals - complete NICE database*")
+st.markdown("*1,435 pharmaceutical appraisals - complete NICE database*")
 st.divider()
 
 # ── Sidebar ───────────────────────────────────────────────
@@ -550,6 +550,57 @@ if st.button("Get Market Access Assessment", type="primary"):
                          "amlodipine", "ramipril", "lisinopril", "simvastatin",
                          "docetaxel", "paclitaxel", "carboplatin", "cisplatin"]
 
+        # ── Step 1: Calculate termination rate ───────────
+        termination_rate = terminated_count / total_similar * 100 if total_similar > 0 else 0
+
+        # ── Step 2: Build warnings list ───────────────────
+        warnings_list = []
+
+        if termination_rate == 100 and total_similar >= 2:
+            warnings_list.append(
+                f"CRITICAL: All {total_similar} similar appraisals were terminated without "
+                f"submission. This indication has never resulted in a NICE recommendation. "
+                f"Commercial pricing is the primary risk, not cost-effectiveness."
+            )
+        elif termination_rate > 50:
+            warnings_list.append(
+                f"High termination rate: {terminated_count} of {total_similar} similar "
+                f"appraisals ({termination_rate:.0f}%) were terminated without submission. "
+                f"Manufacturers have repeatedly been unable to agree pricing with NICE. "
+                f"An ICER below threshold does not guarantee recommendation here."
+            )
+
+        try:
+            oldest = str(similar["year"].min())[:7]
+            if oldest < "2015":
+                warnings_list.append(
+                    f"Similar appraisals date from {oldest} - NICE methodology has changed significantly since then."
+                )
+        except:
+            pass
+
+        if comparator and any(g in comparator.lower() for g in generic_drugs):
+            warnings_list.append(
+                f"{comparator} is now a low-cost generic. Historical ICERs may understate the true incremental cost burden."
+            )
+        if total_similar < 5:
+            warnings_list.append(f"Limited precedent - only {total_similar} similar appraisals found.")
+        if not keyword:
+            warnings_list.append("No indication keyword entered - benchmarking against full database.")
+
+        # ── Step 3: Set verdict ───────────────────────────
+        if termination_rate == 100 and total_similar >= 2:
+            verdict = "High Commercial Risk"
+        elif termination_rate > 75 and total_similar >= 3:
+            verdict = "High Commercial Risk"
+        elif estimated_cost <= threshold:
+            verdict = "Likely Recommended"
+        elif estimated_cost <= threshold * 1.5:
+            verdict = "Borderline"
+        else:
+            verdict = "Unlikely to be Recommended"
+
+        # ── Step 4: Evidence Summary ──────────────────────
         st.markdown("### Evidence Summary")
         col_e1, col_e2 = st.columns(2)
         with col_e1:
@@ -560,6 +611,7 @@ if st.button("Get Market Access Assessment", type="primary"):
 - {optimised_count} optimised
 - {rejected_count} not recommended
 - {managed_count} managed access
+- {terminated_count} terminated
 - Historical approval rate: {approval_rate:.0f}%
             """)
         with col_e2:
@@ -572,80 +624,15 @@ if st.button("Get Market Access Assessment", type="primary"):
 - Comparator: {comparator or 'Not specified'}
             """)
 
+        # ── Step 5: Show warnings ─────────────────────────
         st.markdown("**Contextual considerations:**")
-        warnings_list = []
-        try:
-            oldest = str(similar["year"].min())[:7]
-            if oldest < "2015":
-                warnings_list.append(f"Similar appraisals date from {oldest} - NICE methodology has changed significantly since then.")
-        except:
-            pass
-        if comparator and any(g in comparator.lower() for g in generic_drugs):
-            warnings_list.append(f"{comparator} is now a low-cost generic. Historical ICERs may understate the true incremental cost burden.")
-        if total_similar < 5:
-            warnings_list.append(f"Limited precedent - only {total_similar} similar appraisals found.")
-        if not keyword:
-            warnings_list.append("No indication keyword entered - benchmarking against full database.")
-            
-
         if warnings_list:
             for w in warnings_list:
                 st.warning(w)
         else:
             st.info("No major contextual concerns identified.")
 
-        # compute termination rate safely
-        termination_rate = (terminated_count / total_similar * 100) if total_similar > 0 else 0
-
-        # determine verdict
-        if termination_rate == 100 and total_similar >= 2:
-            verdict = "High Commercial Risk"
-        elif termination_rate > 75 and total_similar >= 3:
-            verdict = "High Commercial Risk"
-        elif estimated_cost <= threshold:
-            verdict = "Likely Recommended"
-        elif estimated_cost <= threshold * 1.5:
-            verdict = "Borderline"
-        else:
-            verdict = "Unlikely to be Recommended"
-        if verdict == "High Commercial Risk":
-            st.error(f"""
-High Commercial Risk - ICER alone is insufficient
-
-Despite an ICER of £{estimated_cost:,}/QALY appearing cost-effective,
-{termination_rate:.0f}% of similar appraisals were terminated without
-a NICE recommendation. This strongly suggests:
-
-- Manufacturers cannot achieve a commercially viable price with NICE
-- The indication may have structural pricing challenges
-- Standard technology appraisal may not be the right route
-
-Recommended actions:
-- Investigate Highly Specialised Technologies pathway eligibility
-- Conduct early NICE scientific advice before formal submission
-- Model multiple price scenarios — list price vs net price
-- Consider patient access scheme or managed access agreement
-- Review whether UK launch is commercially viable at any price
-            """)
-
-      # 1. Calculate termination FIRST
-        terminated_similar = similar[similar["decision_simple"] == "Terminated"]
-        terminated_count   = len(terminated_similar)
-        termination_rate   = terminated_count / total_similar * 100 if total_similar > 0 else 0
-
-        # 2. Set verdict
-        if termination_rate == 100 and total_similar >= 2:
-            verdict = "High Commercial Risk"
-        elif termination_rate > 75 and total_similar >= 3:
-            verdict = "High Commercial Risk"
-        elif estimated_cost <= threshold:
-            verdict = "Likely Recommended"
-        elif estimated_cost <= threshold * 1.5:
-            verdict = "Borderline"
-        else:
-            verdict = "Unlikely to be Recommended"
-
-        # 3. Show verdict box
+        # ── Step 6: Show ONE verdict box ──────────────────
         st.markdown("**Preliminary assessment:**")
         if verdict == "High Commercial Risk":
             st.error(f"""
@@ -666,7 +653,6 @@ Recommended actions:
 - Consider patient access scheme or managed access agreement
 - Review whether UK launch is commercially viable at any price
             """)
-
         elif estimated_cost <= threshold:
             st.success(f"""
 Likely cost-effective at the {'end-of-life' if end_of_life == 'Yes' else 'standard'} threshold of £{threshold:,}/QALY.
@@ -675,7 +661,6 @@ Likely cost-effective at the {'end-of-life' if end_of_life == 'Yes' else 'standa
 - Commercial negotiation likely required
 - {optimised_count} similar drugs approved with conditions - prepare for optimisation
             """)
-
         elif estimated_cost <= threshold * 1.5:
             st.warning(f"""
 Borderline - exceeds threshold by {((estimated_cost/threshold)-1)*100:.0f}%.
@@ -684,7 +669,6 @@ Borderline - exceeds threshold by {((estimated_cost/threshold)-1)*100:.0f}%.
 - Consider price reduction to bring ICER below £{threshold:,}
 - Conduct PSA to quantify uncertainty
             """)
-
         else:
             st.error(f"""
 Unlikely to be recommended - exceeds threshold by {((estimated_cost/threshold)-1)*100:.0f}%.
@@ -696,7 +680,7 @@ Unlikely to be recommended - exceeds threshold by {((estimated_cost/threshold)-1
 
         st.caption("Further economic modelling is strongly recommended before drawing conclusions.")
 
-        # 4. PDF download
+        # ── Step 7: PDF download ──────────────────────────
         st.markdown("---")
         pdf_buffer = generate_assessment_pdf(
             drug_name, indication, estimated_cost, qalys,
