@@ -20,7 +20,7 @@ st.set_page_config(
 
 @st.cache_data
 def load_data():
-    df = pd.read_excel(r"NICE_final_v3.xlsx")
+    df = pd.read_excel(r"NICE_final_v3_updated_to_TA1180.xlsx")
     return df
 
 df = load_data()
