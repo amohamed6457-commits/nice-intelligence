@@ -628,21 +628,46 @@ Recommended actions:
 - Review whether UK launch is commercially viable at any price
             """)
 
-        # Check for terminated similar appraisals and warn if common
+        # 1. Calculate termination FIRST
         terminated_similar = similar[similar["decision_simple"] == "Terminated"]
-        termination_rate = len(terminated_similar) / total_similar * 100 if total_similar > 0 else 0
-        if termination_rate > 50:
-            warnings_list.append(
-                f"High termination rate: {len(terminated_similar)} of {total_similar} similar "
-                f"appraisals ({termination_rate:.0f}%) were terminated without submission. "
-                f"This suggests a historically difficult commercial environment — manufacturers "
-                f"have repeatedly been unable to agree pricing with NICE. An ICER below threshold "
-                f"does not guarantee recommendation in this indication."
-            
-            )
+        terminated_count   = len(terminated_similar)
+        termination_rate   = terminated_count / total_similar * 100 if total_similar > 0 else 0
 
+        # 2. Set verdict
+        if termination_rate == 100 and total_similar >= 2:
+            verdict = "High Commercial Risk"
+        elif termination_rate > 75 and total_similar >= 3:
+            verdict = "High Commercial Risk"
+        elif estimated_cost <= threshold:
+            verdict = "Likely Recommended"
+        elif estimated_cost <= threshold * 1.5:
+            verdict = "Borderline"
+        else:
+            verdict = "Unlikely to be Recommended"
+
+        # 3. Show verdict box
         st.markdown("**Preliminary assessment:**")
-        if estimated_cost <= threshold:
+        if verdict == "High Commercial Risk":
+            st.error(f"""
+High Commercial Risk - ICER alone is insufficient
+
+Despite an ICER of £{estimated_cost:,}/QALY appearing cost-effective,
+{termination_rate:.0f}% of similar appraisals were terminated without
+a NICE recommendation. This strongly suggests:
+
+- Manufacturers cannot achieve a commercially viable price with NICE
+- The indication may have structural pricing challenges
+- Standard technology appraisal may not be the right route
+
+Recommended actions:
+- Investigate Highly Specialised Technologies pathway eligibility
+- Conduct early NICE scientific advice before formal submission
+- Model multiple price scenarios - list price vs net price
+- Consider patient access scheme or managed access agreement
+- Review whether UK launch is commercially viable at any price
+            """)
+
+        elif estimated_cost <= threshold:
             st.success(f"""
 Likely cost-effective at the {'end-of-life' if end_of_life == 'Yes' else 'standard'} threshold of £{threshold:,}/QALY.
 - Ensure robust clinical evidence vs {comparator or 'comparator'}
@@ -650,6 +675,7 @@ Likely cost-effective at the {'end-of-life' if end_of_life == 'Yes' else 'standa
 - Commercial negotiation likely required
 - {optimised_count} similar drugs approved with conditions - prepare for optimisation
             """)
+
         elif estimated_cost <= threshold * 1.5:
             st.warning(f"""
 Borderline - exceeds threshold by {((estimated_cost/threshold)-1)*100:.0f}%.
@@ -658,6 +684,7 @@ Borderline - exceeds threshold by {((estimated_cost/threshold)-1)*100:.0f}%.
 - Consider price reduction to bring ICER below £{threshold:,}
 - Conduct PSA to quantify uncertainty
             """)
+
         else:
             st.error(f"""
 Unlikely to be recommended - exceeds threshold by {((estimated_cost/threshold)-1)*100:.0f}%.
@@ -669,6 +696,7 @@ Unlikely to be recommended - exceeds threshold by {((estimated_cost/threshold)-1
 
         st.caption("Further economic modelling is strongly recommended before drawing conclusions.")
 
+        # 4. PDF download
         st.markdown("---")
         pdf_buffer = generate_assessment_pdf(
             drug_name, indication, estimated_cost, qalys,
@@ -689,4 +717,4 @@ Unlikely to be recommended - exceeds threshold by {((estimated_cost/threshold)-1
         st.warning("Please enter a drug name and indication.")
 
 st.divider()
-st.caption("Built with Python & Streamlit | 1,435 appraisals sourced from NICE Technology Appraisals")
+st.caption("Built with Python & Streamlit | 1,439 appraisals sourced from NICE Technology Appraisals")
