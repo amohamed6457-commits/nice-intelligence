@@ -623,6 +623,45 @@ a NICE recommendation. This strongly suggests:
 Recommended actions:
 - Investigate Highly Specialised Technologies pathway eligibility
 - Conduct early NICE scientific advice before formal submission
+- Model multiple price scenarios — list price vs net price
+- Consider patient access scheme or managed access agreement
+- Review whether UK launch is commercially viable at any price
+            """)
+
+      # 1. Calculate termination FIRST
+        terminated_similar = similar[similar["decision_simple"] == "Terminated"]
+        terminated_count   = len(terminated_similar)
+        termination_rate   = terminated_count / total_similar * 100 if total_similar > 0 else 0
+
+        # 2. Set verdict
+        if termination_rate == 100 and total_similar >= 2:
+            verdict = "High Commercial Risk"
+        elif termination_rate > 75 and total_similar >= 3:
+            verdict = "High Commercial Risk"
+        elif estimated_cost <= threshold:
+            verdict = "Likely Recommended"
+        elif estimated_cost <= threshold * 1.5:
+            verdict = "Borderline"
+        else:
+            verdict = "Unlikely to be Recommended"
+
+        # 3. Show verdict box
+        st.markdown("**Preliminary assessment:**")
+        if verdict == "High Commercial Risk":
+            st.error(f"""
+High Commercial Risk - ICER alone is insufficient
+
+Despite an ICER of £{estimated_cost:,}/QALY appearing cost-effective,
+{termination_rate:.0f}% of similar appraisals were terminated without
+a NICE recommendation. This strongly suggests:
+
+- Manufacturers cannot achieve a commercially viable price with NICE
+- The indication may have structural pricing challenges
+- Standard technology appraisal may not be the right route
+
+Recommended actions:
+- Investigate Highly Specialised Technologies pathway eligibility
+- Conduct early NICE scientific advice before formal submission
 - Model multiple price scenarios - list price vs net price
 - Consider patient access scheme or managed access agreement
 - Review whether UK launch is commercially viable at any price
