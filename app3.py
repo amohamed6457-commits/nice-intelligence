@@ -20,7 +20,7 @@ st.set_page_config(
 
 @st.cache_data
 def load_data():
-    df = pd.read_excel(r"NICE_final_v3_updated_to_TA1180.xlsx")
+    df = pd.read_excel(r"C:\Users\axelz\NICE_final_v6.xlsx")
     return df
 
 df = load_data()
@@ -309,13 +309,14 @@ def generate_assessment_pdf(
 
 # ── Title ─────────────────────────────────────────────────
 st.title("💊 NICE Technology Appraisal Intelligence")
-st.markdown("*1,435 pharmaceutical appraisals - complete NICE database*")
+st.markdown("*1,439 pharmaceutical appraisals - complete NICE database*")
 st.divider()
 
 # ── Sidebar ───────────────────────────────────────────────
 st.sidebar.title("🔍 Filters")
 search = st.sidebar.text_input("Search Drug Name")
-decisions = ["All"] + sorted(df["decision_simple"].dropna().unique().tolist())
+decisions_vals = df["decision_simple"].dropna().astype(str).unique().tolist()
+decisions = ["All"] + sorted(decisions_vals, key=lambda x: x.lower())
 selected_decision = st.sidebar.selectbox("Decision", decisions)
 years = ["All"] + sorted(df["year"].dropna().unique().tolist(), reverse=True)
 selected_year = st.sidebar.selectbox("Year", years)
@@ -472,6 +473,7 @@ if st.button("Get Market Access Assessment", type="primary"):
         optimised_count   = len(similar[similar["decision_simple"] == "Optimised"])
         rejected_count    = len(similar[similar["decision_simple"] == "Not Recommended"])
         managed_count     = len(similar[similar["decision_simple"] == "Managed Access"])
+        terminated_count  = len(similar[similar["decision_simple"] == "Terminated"])
         approval_rate     = (recommended_count + optimised_count) / total_similar * 100 if total_similar > 0 else 0
 
         st.markdown("---")
@@ -487,7 +489,7 @@ if st.button("Get Market Access Assessment", type="primary"):
         with col_r4:
             st.metric("Historical Approval Rate", f"{approval_rate:.0f}%")
 
-        col_s1, col_s2, col_s3, col_s4 = st.columns(4)
+        col_s1, col_s2, col_s3, col_s4, col_s5 = st.columns(5)
         with col_s1:
             st.metric("Recommended",     recommended_count)
         with col_s2:
@@ -496,6 +498,8 @@ if st.button("Get Market Access Assessment", type="primary"):
             st.metric("Not Recommended", rejected_count)
         with col_s4:
             st.metric("Managed Access",  managed_count)
+        with col_s5:
+            st.metric("Terminated",     terminated_count)
 
         patterns = []
         if total_similar > 0 and keyword:
@@ -582,6 +586,7 @@ if st.button("Get Market Access Assessment", type="primary"):
             warnings_list.append(f"Limited precedent - only {total_similar} similar appraisals found.")
         if not keyword:
             warnings_list.append("No indication keyword entered - benchmarking against full database.")
+            
 
         if warnings_list:
             for w in warnings_list:
@@ -589,11 +594,52 @@ if st.button("Get Market Access Assessment", type="primary"):
         else:
             st.info("No major contextual concerns identified.")
 
-        verdict = (
-            "Likely Recommended" if estimated_cost <= threshold
-            else "Borderline" if estimated_cost <= threshold * 1.5
-            else "Unlikely to be Recommended"
-        )
+        # compute termination rate safely
+        termination_rate = (terminated_count / total_similar * 100) if total_similar > 0 else 0
+
+        # determine verdict
+        if termination_rate == 100 and total_similar >= 2:
+            verdict = "High Commercial Risk"
+        elif termination_rate > 75 and total_similar >= 3:
+            verdict = "High Commercial Risk"
+        elif estimated_cost <= threshold:
+            verdict = "Likely Recommended"
+        elif estimated_cost <= threshold * 1.5:
+            verdict = "Borderline"
+        else:
+            verdict = "Unlikely to be Recommended"
+        if verdict == "High Commercial Risk":
+            st.error(f"""
+High Commercial Risk - ICER alone is insufficient
+
+Despite an ICER of £{estimated_cost:,}/QALY appearing cost-effective,
+{termination_rate:.0f}% of similar appraisals were terminated without
+a NICE recommendation. This strongly suggests:
+
+- Manufacturers cannot achieve a commercially viable price with NICE
+- The indication may have structural pricing challenges
+- Standard technology appraisal may not be the right route
+
+Recommended actions:
+- Investigate Highly Specialised Technologies pathway eligibility
+- Conduct early NICE scientific advice before formal submission
+- Model multiple price scenarios — list price vs net price
+- Consider patient access scheme or managed access agreement
+- Review whether UK launch is commercially viable at any price
+            """)
+
+        # Check for terminated similar appraisals and warn if common
+        terminated_similar = similar[similar["decision_simple"] == "Terminated"]
+        termination_rate = len(terminated_similar) / total_similar * 100 if total_similar > 0 else 0
+        if termination_rate > 50:
+            warnings_list.append(
+                f"High termination rate: {len(terminated_similar)} of {total_similar} similar "
+                f"appraisals ({termination_rate:.0f}%) were terminated without submission. "
+                f"This suggests a historically difficult commercial environment — manufacturers "
+                f"have repeatedly been unable to agree pricing with NICE. An ICER below threshold "
+                f"does not guarantee recommendation in this indication."
+            
+            )
 
         st.markdown("**Preliminary assessment:**")
         if estimated_cost <= threshold:
