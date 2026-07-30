@@ -1,3 +1,12 @@
+"""
+NICE Technology Appraisal Intelligence — dashboard.
+
+Data contract: NICE_v12_clean.xlsx
+  Sheet1          — appraisal rows (adds year_start, year_label, search_blob)
+  Tag_Vocabulary  — single source of truth for every categorical dropdown
+  Enrichment_Log  — provenance, surfaced in the Methodology expander
+"""
+
 import io
 import re
 from collections import Counter
@@ -28,6 +37,9 @@ st.set_page_config(
     page_icon="💊",
     layout="wide",
 )
+
+
+# Data loading
 
 @st.cache_data
 def load_data():
@@ -72,6 +84,9 @@ def vocab_options(vocab, field, fallback):
 df = load_data()
 VOCAB = load_vocabulary()
 TOTAL_ROWS = len(df)
+
+
+# Similarity scoring
 
 SIMILARITY_WEIGHTS = {
     "therapeutic_area": ("Disease area", 30),
@@ -176,6 +191,9 @@ def has_tag_coverage(similar_df):
         return False
     return similar_df["mechanism_of_action"].notna().sum() > 0
 
+
+# Keyword resolution
+
 SEARCH_SYNONYMS = {
     "non-small cell lung cancer": "lung",
     "non small cell lung cancer": "lung",
@@ -226,6 +244,9 @@ def resolve_keyword(keyword):
             return SEARCH_SYNONYMS[term], term
 
     return cleaned, None
+
+
+# Reasoning synthesis
 
 THEME_TAGS = [
     ("cost effectiveness / value for money", "💰", "Cost-effectiveness exceeded acceptable NHS value"),
@@ -365,6 +386,9 @@ def split_shared_unique(card_concerns, counter, sample_size):
             unique.append(c)
     return shared, unique
 
+
+# PDF report
+
 def generate_assessment_pdf(
     drug_name, indication, estimated_cost, end_of_life, comparator, threshold,
     appraisal_type, total_similar, recommended_count, optimised_count,
@@ -438,13 +462,20 @@ def generate_assessment_pdf(
     content.append(vt)
     content.append(Spacer(1, 0.3 * cm))
 
+    verdict_plain = {
+        "High Commercial Risk": "high commercial/pricing risk",
+        "Likely Recommended": "low risk",
+        "Borderline": "moderate risk",
+        "Unlikely to be Recommended": "high risk",
+    }.get(verdict, verdict.lower())
+
     content.append(Paragraph("Executive Summary", heading))
     content.append(Paragraph(
         f"{drug_name} for {indication} has been benchmarked against {total_similar} NICE "
         f"technology appraisals retrieved by indication keyword match. The submitted ICER of "
         f"£{estimated_cost:,}/QALY sits {((estimated_cost / threshold) - 1) * 100:+.0f}% "
         f"relative to the £{threshold:,}/QALY reference threshold, producing an initial risk "
-        f"signal of <b>{verdict_text.lower()}</b>. Within the retrieved set, "
+        f"signal of <b>{verdict_plain}</b>. Within the retrieved set, "
         f"{approval_rate:.0f}% of appraisals were recommended or optimised "
         f"({recommended_count} recommended, {optimised_count} optimised, "
         f"{rejected_count} not recommended) — this is descriptive of the retrieved precedent "
@@ -629,6 +660,9 @@ def generate_assessment_pdf(
     buffer.seek(0)
     return buffer
 
+
+# Header
+
 st.title("💊 NICE Technology Appraisal Intelligence")
 st.markdown(f"*{TOTAL_ROWS:,} pharmaceutical appraisals — complete NICE database*")
 
@@ -666,6 +700,9 @@ never encoded as if it were an observed ICER.
         pass
 
 st.divider()
+
+
+# Sidebar filters
 
 st.sidebar.title("🔍 Filters")
 
@@ -714,6 +751,7 @@ filtered_df = filtered_df[
 ]
 
 
+# Metrics — one card per decision category so they reconcile
 
 st.metric("Total Appraisals", len(filtered_df))
 metric_cols = st.columns(len(decisions))
@@ -772,6 +810,7 @@ else:
     st.info("No appraisals match the current filters.")
 
 
+# Analysis charts
 
 st.divider()
 st.subheader("📊 Analysis")
@@ -841,6 +880,8 @@ else:
             width="stretch",
         )
 
+
+# HTA Evidence Explorer
 
 st.divider()
 st.subheader("🔎 HTA Evidence Explorer")
