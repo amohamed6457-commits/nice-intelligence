@@ -1081,10 +1081,23 @@ if st.button("Retrieve Comparable Appraisals", type="primary"):
                                 else "🟡" if f["points"] > 0 else "❌")
                         st.markdown(f"{mark} **{f['label']}**: {f['points']:g}/{f['weight']}")
     else:
+        disp = similar.head(10).copy()
+        # _same_drug is computed for every row regardless of scoring mode —
+        # only the scored branch was checking it. Without this, querying an
+        # already-approved drug silently includes its own real NICE decision
+        # in the "similar precedent" table with no indication that's what
+        # happened, which can make the recommendation-proportion figure look
+        # more reassuring than the actual comparator evidence supports.
+        disp["Drug"] = disp.apply(
+            lambda r: (r["drug_name"] + " 🔁") if r.get("_same_drug") else r["drug_name"], axis=1)
         st.dataframe(
-            similar[["drug_name", "brand_name", "decision_simple", "indication",
-                     "year_label", "appraisal_id"]].rename(columns=rename_map).head(10),
+            disp[["Drug", "brand_name", "decision_simple", "indication",
+                  "year_label", "appraisal_id"]].rename(columns=rename_map).head(10),
             width="stretch", hide_index=True)
+        if disp["_same_drug"].any():
+            st.caption("🔁 = same drug name as your query, appraised previously under a "
+                       "different TA number — this is that drug's own precedent, not an "
+                       "independent comparator.")
 
     # ── Era trend ──────────────────────────────────────────
     if total_similar >= 3:
