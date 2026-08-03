@@ -29,7 +29,7 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-DATA_FILE = "NICE_v12_clean.xlsx"
+DATA_FILE = "NICE_v13_clean.xlsx"
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 st.set_page_config(
@@ -670,7 +670,9 @@ tagged_total = int(df["line_of_therapy"].notna().sum())
 with st.expander("Scope & coverage — read before benchmarking"):
     tagged_areas = (
         df[df["line_of_therapy"].notna()]["therapeutic_area"]
-        .value_counts().head(5).index.tolist()
+        .value_counts()
+        .drop(labels=["Other / Multiple therapy areas"], errors="ignore")
+        .head(5).index.tolist()
     )
     st.markdown(f"""
 This tool operates at two levels of depth.
@@ -680,9 +682,8 @@ filter, decision history, rejection reasoning, and links to NICE guidance.
 
 **Weighted similarity benchmarking** requires structured tags (line of therapy,
 mechanism of action, biomarker, comparator type). These are currently populated
-for **{tagged_total}** appraisals, concentrated in {', '.join(tagged_areas[:3])}
-— specifically lung, breast, and colorectal cancer. Outside those, the tool falls
-back to indication-keyword retrieval and says so.
+for **{tagged_total}** appraisals, concentrated in {', '.join(tagged_areas)}.
+Outside those areas, the tool falls back to indication-keyword retrieval and says so.
 
 **Published ICERs** exist for **{int(df['icer_lower'].notna().sum())}** appraisals.
 Most modern NICE appraisals withhold cost-effectiveness results under confidential
@@ -899,7 +900,7 @@ with col_b:
     comparator = st.text_input("Main Comparator", placeholder="e.g. Docetaxel")
     appraisal_type = st.radio("Appraisal Type", ["STA", "MTA"])
     keyword = st.text_input("Indication keyword for benchmarking",
-                            placeholder="e.g. lung, breast, colorectal")
+                            placeholder="e.g. lung, breast, immunology, diabetes")
     st.caption("Abbreviations and phrases both work — 'NSCLC', 'Advanced NSCLC' and "
                "'non-small cell lung cancer' all resolve to the same retrieval set.")
 
@@ -907,8 +908,8 @@ with st.expander("Advanced profile (improves similarity matching where tagged da
     st.caption(
         f"Options are read from the Tag_Vocabulary sheet, so they always match the "
         f"tagged data exactly. {tagged_total} of {TOTAL_ROWS:,} appraisals carry these "
-        f"tags — currently lung, breast and colorectal cancer. Filling these in sharpens "
-        f"the similarity score for those indications; elsewhere the tool falls back to "
+        f"tags — currently {', '.join(tagged_areas)}. Filling these in sharpens the "
+        f"similarity score for those indications; elsewhere the tool falls back to "
         f"indication-keyword matching."
     )
     p1, p2 = st.columns(2)
@@ -959,10 +960,18 @@ if st.button("Retrieve Comparable Appraisals", type="primary"):
         "orphan_status": None,
         "appraisal_type": appraisal_type,
     }
+    # Fields that represent genuinely optional profile depth. therapeutic_area
+    # is auto-inferred (never a user choice) and appraisal_type is a required
+    # radio that's always STA/MTA — including either here made this check
+    # permanently True, so scoring silently activated even when the user
+    # never touched the Advanced profile at all.
+    OPTIONAL_PROFILE_FIELDS = (
+        "mechanism_of_action", "line_of_therapy", "comparator_type",
+        "biomarker", "orphan_status",
+    )
     query_has_tags = any(
-        v and v != "Not specified"
-        for k, v in query_profile.items()
-        if k not in ("therapeutic_area", "_drug_name")
+        query_profile.get(k) and query_profile.get(k) != "Not specified"
+        for k in OPTIONAL_PROFILE_FIELDS
     )
 
     if len(similar) > 0:
@@ -1024,7 +1033,7 @@ if st.button("Retrieve Comparable Appraisals", type="primary"):
         st.caption(
             f"Advanced profile fields were entered, but none of the retrieved appraisals "
             f"in this indication carry structured tags. Weighted scoring covers "
-            f"{tagged_total} tagged appraisals (lung, breast and colorectal cancer). "
+            f"{tagged_total} tagged appraisals ({', '.join(tagged_areas)}). "
             f"Showing keyword-matched results instead.")
     else:
         st.caption(
@@ -1272,17 +1281,54 @@ if st.button("Retrieve Comparable Appraisals", type="primary"):
     # ── Optimised set ──────────────────────────────────────
     optimised_similar = similar[similar["decision_simple"] == "Optimised"]
     if len(optimised_similar) > 0:
+        has_restrictions = (
+            "restriction_type" in optimised_similar.columns
+            and optimised_similar["restriction_type"].notna().any()
+        )
         st.markdown(f"**Optimised appraisals in this retrieved set ({len(optimised_similar)}):**")
-        st.caption(
-            "Recommended only within a restricted population or under specific conditions. "
-            "Structured restriction-type data is not yet extracted — review the specific "
-            "restrictions directly in NICE guidance.")
-        st.dataframe(
-            optimised_similar[["drug_name", "indication", "year_label", "appraisal_id", "url"]]
-            .head(10).rename(columns={
-                "drug_name": "Drug", "indication": "Indication", "year_label": "Year",
-                "appraisal_id": "Appraisal ID", "url": "NICE Link"}),
-            width="stretch", hide_index=True)
+
+        if has_restrictions:
+            tagged_restr = optimised_similar[optimised_similar["restriction_type"].notna()]
+            untagged_restr = len(optimised_similar) - len(tagged_restr)
+            st.caption(
+                "Recommended only within a restricted population or under specific "
+                "conditions. Restriction type is extracted from committee guidance where "
+                "available." + (
+                    f" {untagged_restr} appraisal(s) below aren't yet tagged — review those "
+                    f"directly in NICE guidance." if untagged_restr else ""
+                )
+            )
+            for _, row in optimised_similar.head(10).iterrows():
+                rtype = row.get("restriction_type")
+                label = (
+                    f"{row['drug_name']} — {rtype}"
+                    if pd.notna(rtype) and rtype not in ("Not applicable", "Not specified")
+                    else f"{row['drug_name']} — restriction not yet extracted"
+                )
+                with st.expander(f"{label} ({row['appraisal_id']})"):
+                    st.markdown(f"**Indication:** {row['indication']}")
+                    note = row.get("restriction_note")
+                    if pd.notna(note) and str(note).strip().lower() not in (
+                        "not applicable", "not specified"):
+                        st.write(note)
+                    else:
+                        st.caption("No structured restriction detail extracted for this "
+                                   "appraisal — see full guidance below.")
+                    if pd.notna(row.get("url")):
+                        st.markdown(f"[View NICE guidance]({row['url']})")
+        else:
+            # No tagged rows in this retrieved set at all — same fallback as before.
+            st.caption(
+                "Recommended only within a restricted population or under specific "
+                "conditions. Structured restriction-type data is not yet extracted for "
+                "this indication — review the specific restrictions directly in NICE "
+                "guidance.")
+            st.dataframe(
+                optimised_similar[["drug_name", "indication", "year_label", "appraisal_id", "url"]]
+                .head(10).rename(columns={
+                    "drug_name": "Drug", "indication": "Indication", "year_label": "Year",
+                    "appraisal_id": "Appraisal ID", "url": "NICE Link"}),
+                width="stretch", hide_index=True)
 
     # ── Evidence gaps ──────────────────────────────────────
     nonroutine = similar[similar["decision_simple"].isin(
