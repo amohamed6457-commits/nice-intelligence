@@ -47,6 +47,14 @@ def load_data():
 
 
 @st.cache_data
+def load_enrichment_log():
+    try:
+        return pd.read_excel(DATA_FILE, sheet_name="Enrichment_Log")
+    except Exception:
+        return None
+
+
+@st.cache_data
 def load_vocabulary():
     """
     Build dropdown options from the Tag_Vocabulary sheet.
@@ -84,6 +92,29 @@ def vocab_options(vocab, field, fallback):
 df = load_data()
 VOCAB = load_vocabulary()
 TOTAL_ROWS = len(df)
+
+
+def _guidance_status_category(text):
+    """
+    Bucket the free-text current_guidance_status into something filterable.
+
+    The field is unstructured (~90 distinct one-off strings like 'Replaced
+    by TA375' or 'Guidance withdrawn because...'), so this only classifies
+    on keyword presence — it doesn't attempt to extract the replacement ID.
+    Rows never checked for this stay 'Not checked' rather than being
+    assumed current, since that's a materially different claim.
+    """
+    if pd.isna(text):
+        return "Not checked"
+    t = str(text).lower()
+    if "no separate supersession" in t:
+        return "Current"
+    if any(k in t for k in ("replaced", "superseded", "withdrawn", "incorporated", "moved to static")):
+        return "Replaced / withdrawn"
+    return "Current"
+
+
+df["guidance_status"] = df["current_guidance_status"].apply(_guidance_status_category)
 
 
 # Similarity scoring
@@ -684,6 +715,22 @@ filter, decision history, rejection reasoning, and links to NICE guidance.
 mechanism of action, biomarker, comparator type). These are currently populated
 for **{tagged_total}** appraisals, concentrated in {', '.join(tagged_areas)}.
 Outside those areas, the tool falls back to indication-keyword retrieval and says so.
+Where a row has been through this tagging process, the specific basis for each tag
+is available — look for "How this row's similarity tags were assigned" wherever
+that appraisal appears.
+
+**Disease area (Therapy Area filter):** this classification covers all
+{TOTAL_ROWS:,} rows and predates the tagging pass above — it isn't independently
+documented in this dataset. Treat it as a useful first-pass filter rather than a
+verified clinical classification, and cross-check against the indication text or
+the linked NICE guidance for anything you're relying on.
+
+**Guidance status:** {int((df['guidance_status'] == 'Replaced / withdrawn').sum())}
+appraisals have an explicit note that they were later replaced or withdrawn, and
+{int((df['guidance_status'] == 'Current').sum())} are confirmed still current.
+The remaining {int((df['guidance_status'] == 'Not checked').sum())} were never
+checked for supersession — the sidebar filter hides only the confirmed-replaced
+set by default, since "not checked" and "confirmed current" are different claims.
 
 **Published ICERs** exist for **{int(df['icer_lower'].notna().sum())}** appraisals.
 Most modern NICE appraisals withhold cost-effectiveness results under confidential
@@ -691,14 +738,12 @@ commercial arrangements. Where that applies, the numeric field is deliberately l
 empty and the qualitative position is recorded separately — a NICE threshold is
 never encoded as if it were an observed ICER.
     """)
-    try:
-        log = pd.read_excel(DATA_FILE, sheet_name="Enrichment_Log")
+    log = load_enrichment_log()
+    if log is not None:
         st.markdown("**Enrichment log**")
         # Cast to string: the log mixes counts and words ('Present') in one
         # column, which Arrow cannot serialise as a single type.
         st.dataframe(log.astype(str), width="stretch", hide_index=True)
-    except Exception:
-        pass
 
 st.divider()
 
@@ -724,6 +769,17 @@ selected_decisions = st.sidebar.multiselect(
     "Decision", decisions, help="Leave empty to include all decisions."
 )
 
+hide_replaced = st.sidebar.checkbox(
+    "Hide replaced / withdrawn guidance", value=True,
+    help=(
+        f"{int((df['guidance_status'] == 'Replaced / withdrawn').sum())} appraisals have an "
+        f"explicit replacement or withdrawal note and are hidden by default. "
+        f"{int((df['guidance_status'] == 'Not checked').sum())} appraisals were never checked "
+        f"for supersession — these stay visible either way, since 'not checked' isn't the same "
+        f"claim as 'confirmed current.'"
+    ),
+)
+
 year_min = int(df["year_start"].min())
 year_max = int(df["year_start"].max())
 year_range = st.sidebar.slider(
@@ -747,6 +803,8 @@ if selected_areas:
     filtered_df = filtered_df[filtered_df["therapeutic_area"].isin(selected_areas)]
 if selected_decisions:
     filtered_df = filtered_df[filtered_df["decision_simple"].isin(selected_decisions)]
+if hide_replaced:
+    filtered_df = filtered_df[filtered_df["guidance_status"] != "Replaced / withdrawn"]
 filtered_df = filtered_df[
     filtered_df["year_start"].between(year_range[0], year_range[1])
 ]
@@ -804,6 +862,20 @@ if drug_options:
             brand = row.get("brand_name")
             if pd.notna(brand) and str(brand).strip().lower() != "not specified":
                 st.caption(f"Brand name: {brand}")
+
+            status_note = row.get("current_guidance_status")
+            if row["guidance_status"] == "Replaced / withdrawn" and pd.notna(status_note):
+                st.warning(f"Guidance status: {status_note}")
+            elif row["guidance_status"] == "Current":
+                st.caption("Guidance status: current — no replacement or withdrawal recorded.")
+            else:
+                st.caption("Guidance status: not checked for supersession in this dataset.")
+
+            tag_basis = row.get("tag_basis")
+            if pd.notna(tag_basis):
+                with st.expander("How this row's similarity tags were assigned"):
+                    st.caption(tag_basis)
+
             if pd.notna(row.get("rejection_reasoning")):
                 st.caption(str(row["rejection_reasoning"])[:300])
             st.markdown(f"[View NICE Guidance]({row['url']})")
@@ -1089,6 +1161,8 @@ if st.button("Retrieve Comparable Appraisals", type="primary"):
                         mark = ("✅" if f["points"] >= f["weight"] * 0.99
                                 else "🟡" if f["points"] > 0 else "❌")
                         st.markdown(f"{mark} **{f['label']}**: {f['points']:g}/{f['weight']}")
+                if pd.notna(row.get("tag_basis")):
+                    st.caption(f"Tagging basis: {row['tag_basis']}")
     else:
         disp = similar.head(10).copy()
         # _same_drug is computed for every row regardless of scoring mode —
