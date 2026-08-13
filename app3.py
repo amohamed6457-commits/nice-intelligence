@@ -1769,7 +1769,7 @@ Possible next steps:
     st.markdown("### 💬 Ask about this precedent set")
 
     try:
-        api_key = st.secrets.get("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")
+        api_key = st.secrets.get("ANTHROPIC_API_KEY")
     except Exception:
         # Raised when no secrets.toml exists at all, not just when the key
         # is absent from it — this is the expected state before secrets
