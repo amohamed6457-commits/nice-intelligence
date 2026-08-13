@@ -9,6 +9,7 @@ Data contract: NICE_v12_clean.xlsx
 
 import io
 import re
+import requests
 from collections import Counter
 from datetime import date
 
@@ -275,6 +276,102 @@ def resolve_keyword(keyword):
             return SEARCH_SYNONYMS[term], term
 
     return cleaned, None
+
+
+# Grounded chat over the retrieved comparator set
+
+CHAT_MODEL = "claude-haiku-4-5-20251001"
+CHAT_MAX_TURNS = 8  # per distinct query — bounds API spend on a public, unauthenticated app
+CHAT_MAX_CONTEXT_ROWS = 10
+
+CHAT_SYSTEM_PROMPT = """You are answering questions about a specific, already-retrieved set \
+of NICE Technology Appraisal precedents for a market access consultant. You are NOT a general \
+NICE or market-access assistant.
+
+Rules, no exceptions:
+1. Answer ONLY using the appraisal data provided below. Do not use outside knowledge of NICE, \
+drugs, or clinical practice beyond what's in this context, even if you know it.
+2. If the retrieved appraisals don't contain enough information to answer, say so plainly — \
+never fill the gap with a plausible-sounding guess.
+3. Never state a numeric ICER, cost, or percentage that isn't explicitly present in the data below.
+4. When you draw a conclusion, name which appraisal(s) it comes from (by TA ID) so it can be \
+checked against the source.
+5. Keep answers short and direct — a consultant is scanning this, not reading an essay.
+6. This is a descriptive summary of retrieved precedent, not a prediction of a NICE decision. \
+If asked to predict an outcome, say that's outside what this data can support."""
+
+
+def build_chat_context(similar_df, drug_name, indication, estimated_cost, threshold, comparator):
+    """
+    Bound, structured context for the chat model — the top N retrieved rows'
+    qualitative fields only. Kept small deliberately: smaller context is
+    cheaper per turn and keeps the model's attention on precedent that's
+    actually relevant, rather than padding it with the full retrieved set.
+    """
+    rows = similar_df.head(CHAT_MAX_CONTEXT_ROWS)
+    blocks = [
+        f"Hypothetical query: {drug_name} for {indication}. "
+        f"Submitted ICER £{estimated_cost:,}/QALY vs a £{threshold:,}/QALY reference threshold. "
+        f"Comparator: {comparator or 'not specified'}.",
+        "",
+        f"Retrieved precedent ({len(rows)} of {len(similar_df)} shown):",
+    ]
+    for _, row in rows.iterrows():
+        parts = [f"[{row['appraisal_id']}] {row['drug_name']} — {row['indication']} "
+                 f"— Decision: {row['decision_simple']} ({row.get('year_label', '')})"]
+        for label, col in [
+            ("Rejection reasoning", "rejection_reasoning"),
+            ("Detail", "detailed_reasoning"),
+            ("Restriction", "restriction_note"),
+            ("ICER position", "icer_evidence_note"),
+            ("Committee comment", "original_nice_comment"),
+        ]:
+            val = row.get(col)
+            if pd.notna(val) and str(val).strip().lower() not in ("", "not specified", "not applicable"):
+                parts.append(f"  {label}: {str(val)[:400]}")
+        if pd.notna(row.get("icer_lower")):
+            parts.append(f"  Reported ICER: £{row['icer_lower']:,.0f}"
+                         + (f"–£{row['icer_upper']:,.0f}" if pd.notna(row.get("icer_upper")) else ""))
+        blocks.append("\n".join(parts))
+    return "\n\n".join(blocks)
+
+
+def ask_chat(api_key, context, history, question):
+    """
+    One grounded turn. Returns (answer_text, error_message) — exactly one
+    is None. Uses the raw HTTP API rather than a client library, since it's
+    the only Anthropic call this app makes and keeps the dependency list
+    unchanged.
+    """
+    messages = list(history) + [{"role": "user", "content": question}]
+    try:
+        resp = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json",
+            },
+            json={
+                "model": CHAT_MODEL,
+                "max_tokens": 500,
+                "system": CHAT_SYSTEM_PROMPT + "\n\n--- Retrieved precedent data ---\n" + context,
+                "messages": messages,
+            },
+            timeout=30,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        text = "".join(b.get("text", "") for b in data.get("content", []) if b.get("type") == "text")
+        return text.strip() or "No response text returned.", None
+    except requests.exceptions.HTTPError as e:
+        if resp.status_code == 401:
+            return None, "API key was rejected — check it's correctly set in Streamlit secrets."
+        if resp.status_code == 429:
+            return None, "Rate limited — wait a moment and try again."
+        return None, f"API error ({resp.status_code})."
+    except requests.exceptions.RequestException:
+        return None, "Couldn't reach the API — check your connection and try again."
 
 
 # Reasoning synthesis
@@ -1000,7 +1097,23 @@ with st.expander("Advanced profile (improves similarity matching where tagged da
             "Comparator type",
             vocab_options(VOCAB, "comparator_type", ["Not specified"]))
 
+if "hta_query_ran" not in st.session_state:
+    st.session_state.hta_query_ran = False
+if "chat_signature" not in st.session_state:
+    st.session_state.chat_signature = None
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+
 if st.button("Retrieve Comparable Appraisals", type="primary"):
+    st.session_state.hta_query_ran = True
+    # A genuinely new query resets the chat — its grounding data has changed.
+    new_signature = (drug_name, indication, keyword, mechanism_input,
+                      line_of_therapy_input, biomarker_input, comparator_type_input)
+    if new_signature != st.session_state.chat_signature:
+        st.session_state.chat_history = []
+        st.session_state.chat_signature = new_signature
+
+if st.session_state.hta_query_ran:
     if not (drug_name and indication):
         st.warning("Please enter a drug name and indication.")
         st.stop()
@@ -1650,6 +1763,63 @@ Possible next steps:
         mime="application/pdf",
         type="primary",
     )
+
+    # ── Chat over this retrieved set ─────────────────────
+    st.markdown("---")
+    st.markdown("### 💬 Ask about this precedent set")
+
+    try:
+        api_key = st.secrets.get("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")
+    except Exception:
+        # Raised when no secrets.toml exists at all, not just when the key
+        # is absent from it — this is the expected state before secrets
+        # are configured, so it must degrade gracefully, not crash.
+        api_key = None
+
+    if not api_key:
+        st.info(
+            "Chat isn't configured yet — needs an ANTHROPIC_API_KEY in this app's Streamlit "
+            "secrets."
+        )
+    else:
+        st.caption(
+            "Ask questions about the appraisals retrieved above — e.g. \"what's driving the "
+            "rejections here?\" Answers are grounded only in this specific retrieved set and "
+            "will say so if something isn't covered by it, rather than guessing."
+        )
+
+        turns_used = len(st.session_state.chat_history) // 2
+        st.caption(f"{turns_used}/{CHAT_MAX_TURNS} questions used for this query.")
+
+        for msg in st.session_state.chat_history:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
+
+        if turns_used >= CHAT_MAX_TURNS:
+            st.warning(
+                "Question limit reached for this query. Run a new search above to reset it."
+            )
+        else:
+            user_question = st.chat_input("Ask a question about these results...")
+            if user_question:
+                st.session_state.chat_history.append(
+                    {"role": "user", "content": user_question})
+                with st.chat_message("user"):
+                    st.markdown(user_question)
+
+                context = build_chat_context(
+                    similar, drug_name, indication, estimated_cost, threshold, comparator)
+                with st.chat_message("assistant"):
+                    with st.spinner("Checking the retrieved precedent..."):
+                        answer, error = ask_chat(
+                            api_key, context, st.session_state.chat_history[:-1], user_question)
+                    if error:
+                        st.error(error)
+                        st.session_state.chat_history.pop()  # don't count a failed turn
+                    else:
+                        st.markdown(answer)
+                        st.session_state.chat_history.append(
+                            {"role": "assistant", "content": answer})
 
 st.divider()
 st.caption(
