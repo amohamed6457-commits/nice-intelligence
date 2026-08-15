@@ -301,7 +301,8 @@ checked against the source.
 If asked to predict an outcome, say that's outside what this data can support."""
 
 
-def build_chat_context(similar_df, drug_name, indication, estimated_cost, threshold, comparator):
+def build_chat_context(similar_df, drug_name, indication, icer_provided, cost_display,
+                       threshold, comparator):
     """
     Bound, structured context for the chat model — the top N retrieved rows'
     qualitative fields only. Kept small deliberately: smaller context is
@@ -309,9 +310,12 @@ def build_chat_context(similar_df, drug_name, indication, estimated_cost, thresh
     actually relevant, rather than padding it with the full retrieved set.
     """
     rows = similar_df.head(CHAT_MAX_CONTEXT_ROWS)
+    query_label = drug_name if drug_name else "an unnamed hypothetical product"
+    icer_line = (f"Submitted ICER {cost_display}/QALY vs a £{threshold:,}/QALY reference "
+                f"threshold." if icer_provided else
+                "No ICER submitted — this is a precedent/analogue search only.")
     blocks = [
-        f"Hypothetical query: {drug_name} for {indication}. "
-        f"Submitted ICER £{estimated_cost:,}/QALY vs a £{threshold:,}/QALY reference threshold. "
+        f"Hypothetical query: {query_label} for {indication}. {icer_line} "
         f"Comparator: {comparator or 'not specified'}.",
         "",
         f"Retrieved precedent ({len(rows)} of {len(similar_df)} shown):",
@@ -521,7 +525,7 @@ def generate_assessment_pdf(
     drug_name, indication, estimated_cost, end_of_life, comparator, threshold,
     appraisal_type, total_similar, recommended_count, optimised_count,
     rejected_count, managed_count, terminated_count, approval_rate,
-    similar, patterns, warnings_list, verdict,
+    similar, patterns, warnings_list, verdict, icer_provided, cost_display,
 ):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
@@ -539,14 +543,16 @@ def generate_assessment_pdf(
     verdict_color = (
         colors.HexColor("#27ae60") if "Likely" in verdict
         else colors.HexColor("#e67e22") if "Borderline" in verdict
+        else colors.HexColor("#7f8c8d") if "Precedent" in verdict
         else colors.HexColor("#e74c3c")
     )
 
     content = []
+    pdf_drug_label = drug_name if drug_name else f"Analogue search — {indication}"
 
     header = Table(
         [[
-            Paragraph(f"<b>{drug_name}</b>", ParagraphStyle(
+            Paragraph(f"<b>{pdf_drug_label}</b>", ParagraphStyle(
                 "h", fontSize=16, fontName="Helvetica-Bold", textColor=colors.white)),
             Paragraph(
                 f"Market Access Intelligence Report<br/><font size=9>{indication}</font>",
@@ -576,6 +582,7 @@ def generate_assessment_pdf(
         "RISK SIGNAL: LOW - submitted ICER within reference threshold" if "Likely" in verdict
         else "RISK SIGNAL: MODERATE - submitted ICER exceeds threshold" if "Borderline" in verdict
         else "RISK SIGNAL: HIGH COMMERCIAL/PRICING RISK PATTERN" if "Commercial" in verdict
+        else "PRECEDENT REFERENCE ONLY - no ICER submitted" if "Precedent" in verdict
         else "RISK SIGNAL: HIGH - submitted ICER substantially exceeds threshold"
     )
     vt = Table([[Paragraph(verdict_text, ParagraphStyle(
@@ -592,20 +599,30 @@ def generate_assessment_pdf(
 
     verdict_plain = {
         "High Commercial Risk": "high commercial/pricing risk",
+        "Precedent Reference Only": "no ICER submitted — precedent reference only",
         "Likely Recommended": "low risk",
         "Borderline": "moderate risk",
         "Unlikely to be Recommended": "high risk",
     }.get(verdict, verdict.lower())
 
     content.append(Paragraph("Executive Summary", heading))
+    if icer_provided:
+        icer_summary = (
+            f"The submitted ICER of {cost_display}/QALY sits "
+            f"{((estimated_cost / threshold) - 1) * 100:+.0f}% relative to the "
+            f"£{threshold:,}/QALY reference threshold, producing an initial risk "
+            f"signal of <b>{verdict_plain}</b>."
+        )
+    else:
+        icer_summary = (
+            f"No ICER was submitted for this query, so this is a precedent reference "
+            f"only (<b>{verdict_plain}</b>) rather than a threshold-based risk signal."
+        )
     content.append(Paragraph(
-        f"{drug_name} for {indication} has been benchmarked against {total_similar} NICE "
-        f"technology appraisals retrieved by indication keyword match. The submitted ICER of "
-        f"£{estimated_cost:,}/QALY sits {((estimated_cost / threshold) - 1) * 100:+.0f}% "
-        f"relative to the £{threshold:,}/QALY reference threshold, producing an initial risk "
-        f"signal of <b>{verdict_plain}</b>. Within the retrieved set, "
-        f"{approval_rate:.0f}% of appraisals were recommended or optimised "
-        f"({recommended_count} recommended, {optimised_count} optimised, "
+        f"{pdf_drug_label} for {indication} has been benchmarked against {total_similar} NICE "
+        f"technology appraisals retrieved by indication keyword match. {icer_summary} "
+        f"Within the retrieved set, {approval_rate:.0f}% of appraisals were recommended or "
+        f"optimised ({recommended_count} recommended, {optimised_count} optimised, "
         f"{rejected_count} not recommended) — this is descriptive of the retrieved precedent "
         f"only and is not a predicted probability of a NICE decision for this submission.",
         body))
@@ -616,9 +633,10 @@ def generate_assessment_pdf(
 
     econ_data = [
         ["Parameter", "Value"],
-        ["Estimated ICER", f"£{estimated_cost:,}/QALY"],
+        ["Estimated ICER", f"{cost_display}/QALY" if icer_provided else "Not provided"],
         ["WTP Threshold", f"£{threshold:,}/QALY"],
-        ["Position vs Threshold", f"{((estimated_cost / threshold) - 1) * 100:+.0f}%"],
+        ["Position vs Threshold",
+         f"{((estimated_cost / threshold) - 1) * 100:+.0f}%" if icer_provided else "N/A"],
         ["Comparator", comparator or "Not specified"],
         ["End of Life", end_of_life],
         # Previously hardcoded to "STA" regardless of the user's selection.
@@ -1060,18 +1078,40 @@ st.markdown(f"*Structured retrieval and synthesis of comparable NICE appraisals 
 
 col_a, col_b = st.columns(2)
 with col_a:
-    drug_name = st.text_input("Drug Name", placeholder="e.g. Adagrasib")
+    drug_name = st.text_input(
+        "Drug Name (optional)", placeholder="e.g. Adagrasib",
+        help="Leave blank to search for analogues by indication alone, without a named "
+             "product in mind.")
     indication = st.text_input("Indication", placeholder="e.g. Advanced NSCLC")
-    estimated_cost = st.number_input("Estimated Cost (£/QALY)", min_value=0,
-                                     max_value=500000, value=50000, step=5000)
+    icer_provided = st.checkbox(
+        "I have an ICER estimate", value=True,
+        help="Uncheck to search precedent first and see the ICER range achieved, "
+             "without committing to a figure upfront.")
+    if icer_provided:
+        cost_col1, cost_col2 = st.columns(2)
+        with cost_col1:
+            estimated_cost_low = st.number_input(
+                "Estimated ICER (£/QALY)", min_value=0, max_value=500000,
+                value=50000, step=5000)
+        with cost_col2:
+            estimated_cost_high = st.number_input(
+                "Upper estimate (optional)", min_value=0, max_value=500000,
+                value=0, step=5000,
+                help="Leave at 0 for a single figure. Set above the lower estimate to "
+                     "submit a range instead of one exact number.")
+    else:
+        estimated_cost_low = estimated_cost_high = None
+        st.caption("No ICER entered — results will show comparable precedent and the "
+                   "ICER range they achieved, without a risk-signal comparison.")
 with col_b:
-    end_of_life = st.radio("End of Life Indication?", ["Yes", "No"], index=1)
+    end_of_life = st.radio("End of Life Indication?", ["Yes", "No", "Not specified"], index=1)
     comparator = st.text_input("Main Comparator", placeholder="e.g. Docetaxel")
-    appraisal_type = st.radio("Appraisal Type", ["STA", "MTA"])
+    appraisal_type = st.radio("Appraisal Type", ["STA", "MTA", "Not specified"])
     keyword = st.text_input("Indication keyword for benchmarking",
                             placeholder="e.g. lung, breast, immunology, diabetes")
     st.caption("Abbreviations and phrases both work — 'NSCLC', 'Advanced NSCLC' and "
-               "'non-small cell lung cancer' all resolve to the same retrieval set.")
+               "'non-small cell lung cancer' all resolve to the same retrieval set. "
+               "Leave blank to search using the Indication field above instead.")
 
 with st.expander("Advanced profile (improves similarity matching where tagged data is available)"):
     st.caption(
@@ -1114,17 +1154,55 @@ if st.button("Retrieve Comparable Appraisals", type="primary"):
         st.session_state.chat_signature = new_signature
 
 if st.session_state.hta_query_ran:
-    if not (drug_name and indication):
-        st.warning("Please enter a drug name and indication.")
+    if not indication:
+        st.warning("Please enter an indication.")
         st.stop()
 
-    threshold = 50000 if end_of_life == "Yes" else 30000
+    # 'Not specified' EOL status defaults to the standard threshold — flagged
+    # explicitly rather than silently assuming end-of-life status either way.
+    if end_of_life == "Yes":
+        threshold = 50000
+    else:
+        threshold = 30000
+    eol_unspecified = (end_of_life == "Not specified")
+
+    # Single source of truth for how the submitted ICER (or its absence) is
+    # displayed and compared. icer_provided (set by the checkbox above) gates
+    # every verdict/threshold section below; estimated_cost stays a plain
+    # number (the midpoint of a range, if one was given) so the existing
+    # comparison math needs no further changes — only the sections that
+    # render it to the user need to check icer_provided first.
+    cost_is_range = bool(estimated_cost_high and estimated_cost_high > estimated_cost_low) \
+        if icer_provided else False
+    if icer_provided:
+        estimated_cost = (
+            (estimated_cost_low + estimated_cost_high) / 2 if cost_is_range
+            else estimated_cost_low
+        )
+        cost_display = (f"£{estimated_cost_low:,}–£{estimated_cost_high:,}" if cost_is_range
+                        else f"£{estimated_cost:,}")
+    else:
+        estimated_cost = 0
+        cost_display = "Not provided"
+
     keyword_search, matched_synonym = resolve_keyword(keyword)
+    used_indication_fallback = False
+    if not keyword_search and indication:
+        # The 'Indication' field is descriptive only and was never wired to
+        # search — leaving 'keyword' blank meant benchmarking against the
+        # ENTIRE database with no filter, which reads as "broken" to anyone
+        # who assumed the Indication field itself was doing the searching.
+        keyword_search, matched_synonym = resolve_keyword(indication)
+        used_indication_fallback = True
 
     if keyword_search:
         similar = df[df["indication"].str.contains(
             keyword_search, case=False, na=False, regex=False)]
-        if matched_synonym and matched_synonym != keyword_search:
+        if used_indication_fallback:
+            st.caption(
+                f"No benchmarking keyword entered — used the Indication field "
+                f"('{indication.strip()}') instead, interpreted as '{keyword_search}'.")
+        elif matched_synonym and matched_synonym != keyword_search:
             st.caption(f"Interpreted '{keyword.strip()}' as '{keyword_search}' for retrieval.")
     else:
         similar = df
@@ -1191,11 +1269,12 @@ if st.session_state.hta_query_ran:
         st.stop()
 
     st.markdown("---")
-    st.markdown(f"### Assessment for {drug_name}")
+    assessment_label = drug_name if drug_name else f"analogue search — {indication}"
+    st.markdown(f"### Assessment for {assessment_label}")
 
     r1, r2, r3, r4 = st.columns(4)
     r1.metric("WTP Threshold", f"£{threshold:,}")
-    r2.metric("Your ICER", f"£{estimated_cost:,}")
+    r2.metric("Your ICER" if icer_provided else "ICER Status", cost_display)
     r3.metric("Similar Appraisals", total_similar)
     r4.metric("Recommendation Proportion (retrieved set)", f"{approval_rate:.0f}%")
 
@@ -1357,8 +1436,11 @@ if st.session_state.hta_query_ran:
             i1.metric("Lowest reported ICER", f"£{approved_icer['icer_lower'].min():,.0f}")
             i2.metric("Highest reported ICER", f"£{approved_icer['icer_lower'].max():,.0f}")
             avg = with_icer["icer_lower"].mean()
-            i3.metric("Your ICER vs mean",
-                      f"{'Above' if estimated_cost > avg else 'Below'} (£{avg:,.0f})")
+            if icer_provided:
+                i3.metric("Your ICER vs mean",
+                          f"{'Above' if estimated_cost > avg else 'Below'} (£{avg:,.0f})")
+            else:
+                i3.metric("Mean reported ICER", f"£{avg:,.0f}")
 
         icer_cols = ["appraisal_id", "drug_name", "indication", "icer_lower", "icer_upper",
                      "decision_simple", "economic_source_document_type"]
@@ -1580,12 +1662,17 @@ if st.session_state.hta_query_ran:
         st.caption("Descriptive only — the proportion of retrieved appraisals that were "
                    "recommended, not a predicted probability for this drug.")
     with c2:
+        icer_lines = (
+            f"- Submitted ICER: {cost_display}/QALY\n"
+            f"- WTP reference threshold: £{threshold:,}/QALY\n"
+            f"- Position vs threshold: {((estimated_cost / threshold) - 1) * 100:+.0f}%\n"
+            if icer_provided else
+            f"- ICER: not provided — analogue/precedent search only\n"
+            f"- WTP reference threshold (for reference): £{threshold:,}/QALY\n"
+        )
         st.markdown(f"""
 **Your submitted profile (hypothetical):**
-- Submitted ICER: £{estimated_cost:,}/QALY
-- WTP reference threshold: £{threshold:,}/QALY
-- Position vs threshold: {((estimated_cost / threshold) - 1) * 100:+.0f}%
-- Comparator: {comparator or 'Not specified'}
+{icer_lines}- Comparator: {comparator or 'Not specified'}
 - Appraisal type: {appraisal_type}
         """)
         st.caption("These are the figures you entered, not historical or verified NICE values.")
@@ -1627,10 +1714,14 @@ if st.session_state.hta_query_ran:
     else:
         context_facts.append(f"Retrieval set size: {total_similar} appraisals.")
 
-    if not keyword:
+    if not keyword_search:
         warnings_list.append(
-            "No indication keyword entered — benchmarking against the full database rather "
-            "than a targeted indication match.")
+            "No indication could be resolved from your search terms — benchmarking against "
+            "the full database rather than a targeted indication match.")
+    elif used_indication_fallback:
+        context_facts.append(
+            "No benchmarking keyword was entered — the Indication field was used for retrieval "
+            "instead.")
 
     icer_pct = icer_coverage / total_similar * 100
     if icer_pct < 20:
@@ -1674,6 +1765,8 @@ if st.session_state.hta_query_ran:
         signal = "high_commercial_risk"
     elif termination_rate > 75 and total_similar >= 3:
         signal = "high_commercial_risk"
+    elif not icer_provided:
+        signal = "no_icer"
     elif estimated_cost <= threshold:
         signal = "low"
     elif estimated_cost <= threshold * 1.5:
@@ -1683,6 +1776,7 @@ if st.session_state.hta_query_ran:
 
     verdict = {
         "high_commercial_risk": "High Commercial Risk",
+        "no_icer": "Precedent Reference Only",
         "low": "Likely Recommended",
         "moderate": "Borderline",
         "high": "Unlikely to be Recommended",
@@ -1710,6 +1804,21 @@ Possible next steps:
 - Model list price vs net price scenarios explicitly
 - Consider a patient access scheme or managed access route
 - Assess commercial viability of UK launch independent of the ICER position
+        """)
+    elif signal == "no_icer":
+        st.info(f"""
+Position: No ICER submitted — this is a precedent reference, not a risk signal.
+
+{approval_rate:.0f}% of the {total_similar} retrieved appraisals were recommended or
+optimised. Review the ICER range under "Economic evidence" above for a sense of what
+comparable submissions achieved — enter an estimate above to get a threshold-based
+risk signal instead.
+
+Possible next steps:
+- Use the reported ICER range from comparable precedent as a starting benchmark
+- Identify which comparator(s) NICE accepted in this indication
+- Review the restriction conditions on any Optimised appraisals in this set — these
+  often shape what a viable submission actually looks like
         """)
     elif signal == "low":
         st.success(f"""
@@ -1754,12 +1863,13 @@ Possible next steps:
         drug_name, indication, estimated_cost, end_of_life, comparator, threshold,
         appraisal_type, total_similar, recommended_count, optimised_count,
         rejected_count, managed_count, terminated_count, approval_rate,
-        similar, patterns, warnings_list, verdict,
+        similar, patterns, warnings_list, verdict, icer_provided, cost_display,
     )
+    pdf_filename_base = drug_name if drug_name else re.sub(r"\s+", "_", indication.strip())[:40]
     st.download_button(
         "📥 Download PDF Report",
         data=pdf_buffer,
-        file_name=f"{drug_name.replace(' ', '_')}_market_access_report.pdf",
+        file_name=f"{pdf_filename_base.replace(' ', '_')}_market_access_report.pdf",
         mime="application/pdf",
         type="primary",
     )
@@ -1808,7 +1918,8 @@ Possible next steps:
                     st.markdown(user_question)
 
                 context = build_chat_context(
-                    similar, drug_name, indication, estimated_cost, threshold, comparator)
+                    similar, drug_name, indication, icer_provided, cost_display,
+                    threshold, comparator)
                 with st.chat_message("assistant"):
                     with st.spinner("Checking the retrieved precedent..."):
                         answer, error = ask_chat(
