@@ -30,7 +30,7 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-DATA_FILE = "NICE_v13_clean.xlsx"
+DATA_FILE = "NICE_v14_updated_2026-08-17.xlsx"
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 st.set_page_config(
@@ -280,9 +280,11 @@ def resolve_keyword(keyword):
 
 # Grounded chat over the retrieved comparator set
 
-CHAT_MODEL = "claude-haiku-4-5-20251001"
-CHAT_MAX_TURNS = 8  # per distinct query — bounds API spend on a public, unauthenticated app
-CHAT_MAX_CONTEXT_ROWS = 10
+CHAT_MODEL = "claude-sonnet-5"
+CHAT_MAX_TURNS = 8
+CHAT_MAX_CONTEXT_ROWS = 60   # safety ceiling only — normally the full retrieved set
+CHAT_FIELD_CHARS_FULL = 400  # per-field budget for small sets
+CHAT_FIELD_CHARS_TIGHT = 250 # per-field budget once the set gets large
 
 CHAT_SYSTEM_PROMPT = """You are answering questions about a specific, already-retrieved set \
 of NICE Technology Appraisal precedents for a market access consultant. You are NOT a general \
@@ -304,21 +306,41 @@ If asked to predict an outcome, say that's outside what this data can support.""
 def build_chat_context(similar_df, drug_name, indication, icer_provided, cost_display,
                        threshold, comparator):
     """
-    Bound, structured context for the chat model — the top N retrieved rows'
-    qualitative fields only. Kept small deliberately: smaller context is
-    cheaper per turn and keeps the model's attention on precedent that's
-    actually relevant, rather than padding it with the full retrieved set.
+    Structured context for the chat model, covering the WHOLE retrieved set
+    rather than a fixed top-10 slice.
+
+    The previous 10-row cap was invisible from the UI: a query showing 28
+    similar appraisals was answered from the first 10, so any question about
+    the wider pattern ("what drives rejections here?") was silently answered
+    from a third of the evidence. CHAT_MAX_CONTEXT_ROWS is now a cost ceiling,
+    not an editorial choice, and per-field text is tightened as the set grows
+    so a large retrieval doesn't blow up the prompt.
     """
     rows = similar_df.head(CHAT_MAX_CONTEXT_ROWS)
+    field_chars = CHAT_FIELD_CHARS_FULL if len(rows) <= 20 else CHAT_FIELD_CHARS_TIGHT
+
     query_label = drug_name if drug_name else "an unnamed hypothetical product"
     icer_line = (f"Submitted ICER {cost_display}/QALY vs a £{threshold:,}/QALY reference "
-                f"threshold." if icer_provided else
-                "No ICER submitted — this is a precedent/analogue search only.")
+                 f"threshold." if icer_provided else
+                 "No ICER submitted — this is a precedent/analogue search only.")
+
+    # Decision mix up front so pattern questions can be answered from the
+    # whole set without the model having to tally rows itself.
+    counts = similar_df["decision_simple"].value_counts()
+    mix = ", ".join(f"{k}: {v}" for k, v in counts.items())
+
+    truncated = len(similar_df) - len(rows)
+    coverage = (f"Retrieved precedent — all {len(rows)} appraisals in this set:"
+                if truncated <= 0 else
+                f"Retrieved precedent ({len(rows)} of {len(similar_df)}; "
+                f"{truncated} omitted for length — say so if a question needs them):")
+
     blocks = [
         f"Hypothetical query: {query_label} for {indication}. {icer_line} "
         f"Comparator: {comparator or 'not specified'}.",
+        f"Decision mix across the full retrieved set ({len(similar_df)}): {mix}.",
         "",
-        f"Retrieved precedent ({len(rows)} of {len(similar_df)} shown):",
+        coverage,
     ]
     for _, row in rows.iterrows():
         parts = [f"[{row['appraisal_id']}] {row['drug_name']} — {row['indication']} "
@@ -332,7 +354,7 @@ def build_chat_context(similar_df, drug_name, indication, icer_provided, cost_di
         ]:
             val = row.get(col)
             if pd.notna(val) and str(val).strip().lower() not in ("", "not specified", "not applicable"):
-                parts.append(f"  {label}: {str(val)[:400]}")
+                parts.append(f"  {label}: {str(val)[:field_chars]}")
         if pd.notna(row.get("icer_lower")):
             parts.append(f"  Reported ICER: £{row['icer_lower']:,.0f}"
                          + (f"–£{row['icer_upper']:,.0f}" if pd.notna(row.get("icer_upper")) else ""))
@@ -358,7 +380,7 @@ def ask_chat(api_key, context, history, question):
             },
             json={
                 "model": CHAT_MODEL,
-                "max_tokens": 500,
+                "max_tokens": 1000,
                 "system": CHAT_SYSTEM_PROMPT + "\n\n--- Retrieved precedent data ---\n" + context,
                 "messages": messages,
             },
