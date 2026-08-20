@@ -128,6 +128,7 @@ SIMILARITY_WEIGHTS = {
     "biomarker": ("Biomarker", 10),
     "appraisal_type": ("Appraisal type", 5),
     "orphan_status": ("Orphan status", 5),
+    "patient_population_size": ("Population size", 5)
 }
 RECENCY_MAX_POINTS = 5
 
@@ -139,6 +140,7 @@ FIELD_MAP = {
     "biomarker": "biomarker",
     "appraisal_type": "appraisal_type",
     "orphan_status": "orphan_status",
+    "patient_population_size": "patient_population_size"
 }
 
 
@@ -302,6 +304,70 @@ checked against the source.
 6. This is a descriptive summary of retrieved precedent, not a prediction of a NICE decision. \
 If asked to predict an outcome, say that's outside what this data can support."""
 
+def classify_historical_icer(row):
+    lower = row.get("icer_lower")
+    upper = row.get("icer_upper")
+
+    if pd.isna(lower):
+        return "not_reported"
+
+    note = str(row.get("icer_evidence_note") or "").lower()
+    same_value = pd.isna(upper) or float(upper) == float(lower)
+
+    # Strong evidence that the values are scenarios/sensitivity analyses
+    if any(term in note for term in (
+        "scenario",
+        "sensitivity",
+        "alternative survival",
+        "exploration",
+    )):
+        return "scenario_point" if same_value else "scenario_range"
+
+    if same_value:
+        return "point_estimate"
+
+    # Multiple published estimates, but not necessarily a scenario range
+    if any(term in note for term in (
+        "ranged from",
+        "probabilistic",
+        "deterministic",
+        "most plausible",
+        " versus ",
+    )):
+        return "reported_range"
+
+    # We have lower + upper, but cannot safely claim what they represent
+    return "range_basis_unconfirmed"
+
+
+ICER_TYPE_LABELS = {
+    "point_estimate": "Point estimate",
+    "scenario_point": "Scenario / indicative estimate",
+    "scenario_range": "Scenario / sensitivity range",
+    "reported_range": "Reported range / multiple estimates",
+    "range_basis_unconfirmed": "Reported range — basis not confirmed",
+    "not_reported": "Not reported",
+}
+
+
+def format_historical_icer(row, include_type=True):
+    kind = classify_historical_icer(row)
+
+    if kind == "not_reported":
+        return "Not reported"
+
+    lower = float(row.get("icer_lower"))
+    upper = row.get("icer_upper")
+
+    if pd.isna(upper) or float(upper) == lower:
+        value = f"£{lower:,.0f}/QALY"
+    else:
+        value = f"£{lower:,.0f}–£{float(upper):,.0f}/QALY"
+
+    if include_type:
+        return f"{ICER_TYPE_LABELS[kind]}: {value}"
+
+    return value
 
 def build_chat_context(similar_df, drug_name, indication, icer_provided, cost_display,
                        threshold, comparator):
@@ -356,8 +422,7 @@ def build_chat_context(similar_df, drug_name, indication, icer_provided, cost_di
             if pd.notna(val) and str(val).strip().lower() not in ("", "not specified", "not applicable"):
                 parts.append(f"  {label}: {str(val)[:field_chars]}")
         if pd.notna(row.get("icer_lower")):
-            parts.append(f"  Reported ICER: £{row['icer_lower']:,.0f}"
-                         + (f"–£{row['icer_upper']:,.0f}" if pd.notna(row.get("icer_upper")) else ""))
+            parts.append(f"  Reported ICER: {format_historical_icer(row)}")
         blocks.append("\n".join(parts))
     return "\n\n".join(blocks)
 
@@ -402,6 +467,68 @@ def ask_chat(api_key, context, history, question):
 
 # Reasoning synthesis
 
+RESEARCH_QUESTIONS_BY_THEME = {
+    "Comparator did not reflect NHS practice": [
+        "Does the comparator reflect current NHS practice?",
+        "Would the cost-effectiveness result change against the most relevant NHS comparator?",
+    ],
+
+    "Treatment effect waning / durability uncertainty": [
+        "How durable is the treatment effect over longer follow-up?",
+        "How sensitive are cost-effectiveness results to assumptions about treatment-effect waning?",
+    ],
+
+    "Population mismatch with retrieved precedent": [
+        "Is the available evidence representative of the target patient population?",
+        "Do outcomes differ materially across population size or disease-severity groups?",
+    ],
+
+    "Immature survival / follow-up evidence": [
+        "How do clinical outcomes change with longer follow-up?",
+        "Does additional follow-up reduce uncertainty in survival estimates?",
+    ],
+
+    "Insufficient clinical-effectiveness evidence": [
+        "What additional clinical evidence is needed to establish comparative effectiveness?",
+    ],
+
+    "Indirect treatment comparison uncertainty": [
+        "How robust are the results to alternative indirect-comparison methods or assumptions?",
+    ],
+
+    "Evidential or modelling uncertainty": [
+        "Which model assumptions contribute most to decision uncertainty?",
+    ],
+
+    "Utility value uncertainty": [
+        "How sensitive are results to alternative health-state utility estimates?",
+    ],
+
+    "Long-term extrapolation uncertainty": [
+        "How sensitive are results to alternative long-term extrapolation assumptions?",
+    ],
+
+    "Survival benefit not established": [
+        "Is there sufficient evidence to establish a long-term survival benefit?",
+    ],
+
+    "Treatment duration assumptions unsupported": [
+        "What treatment duration is supported by the available evidence?",
+    ],
+
+    "Stopping rule assumptions unsupported": [
+        "How do alternative stopping-rule assumptions affect cost effectiveness?",
+    ],
+
+    "Cost-effectiveness exceeded acceptable NHS value": [
+        "Which assumptions or cost drivers contribute most to the unfavourable cost-effectiveness result?",
+    ],
+
+    "Restricted to a narrower subgroup": [
+        "Which patient subgroup is most likely to benefit and be cost effective?",
+    ],
+}
+
 THEME_TAGS = [
     ("cost effectiveness / value for money", "💰", "Cost-effectiveness exceeded acceptable NHS value"),
     ("appropriate use of nhs resources", "💰", "Cost-effectiveness exceeded acceptable NHS value"),
@@ -418,12 +545,49 @@ THEME_TAGS = [
     ("survival", "⚠️", "Survival benefit not established"),
     ("treatment duration", "⚠️", "Treatment duration assumptions unsupported"),
     ("stopping rule", "⚠️", "Stopping rule assumptions unsupported"),
+    # Waning treatment
+    ("duration of treatment effect", "⚠️", "Treatment effect waning / durability uncertainty"),
+    ("long-term relative treatment effect", "⚠️", "Treatment effect waning / durability uncertainty"),
+    ("duration of gene-therapy benefit", "⚠️", "Treatment effect waning / durability uncertainty"),
+    ("durability", "⚠️", "Treatment effect waning / durability uncertainty"),
 ]
 
 FALLBACK_CONCERN = "Specific concerns not itemised in source text — see full guidance"
 
+def research_questions_from_themes(patterns):
+    questions = []
 
-def synthesise_themes(rejected_df, max_examples=8):
+    for theme, _count in patterns:
+        questions.extend(RESEARCH_QUESTIONS_BY_THEME.get(theme, []))
+
+    return list(dict.fromkeys(questions))
+
+WANING_KEYWORDS = [
+    "duration of treatment effect",
+    "long-term relative treatment effect",
+    "duration of gene-therapy benefit",
+    "durability",
+]
+
+
+def extract_severity(text):
+    if not text:
+        return None
+
+    text = str(text).lower()
+
+    for severity in [
+        "moderately severe",
+        "severe",
+        "moderate",
+        "mild",
+    ]:
+        if severity in text:
+            return severity
+
+    return None
+
+def synthesise_themes(rejected_df, query_profile=None, all_comparables=None, indication=None, max_examples=8):
     """Theme -> (count, supporting appraisal_ids) across a set of appraisals."""
     has_detail = "detailed_reasoning" in rejected_df.columns
     texts_with_ids = []
@@ -452,7 +616,88 @@ def synthesise_themes(rejected_df, max_examples=8):
             theme_sources[label] = matching
         elif label in theme_sources:
             theme_sources[label] = list(dict.fromkeys(theme_sources[label] + matching))
+    
+        # NEW — structured population mismatch
+    if query_profile:
+        user_population = query_profile.get("patient_population_size")
+        if (user_population and user_population != "Not specified" and "patient_population_size" in rejected_df.columns):
+            mismatched_ids = []
+            for _, row in rejected_df.head(max_examples).iterrows():
+                appraisal_population = row.get("patient_population_size")
+                if (pd.notna(appraisal_population) 
+                    and str(appraisal_population).strip()
+                    and str(appraisal_population).lower() != "not specified"
+                    and str(appraisal_population).strip().lower()
+                    != str(user_population).strip().lower()):
+                    mismatched_ids.append(row.get("appraisal_id", "?"))
+            if mismatched_ids:
+                label = "Population mismatch with retrieved precedent"
+                seen_labels[label] = ("⚠️",len(mismatched_ids))
+                theme_sources[label] = mismatched_ids
+ # NEW — disease severity mismatch
+    if indication and all_comparables is not None:
+        user_severity = extract_severity(indication)
 
+        if user_severity:
+            severity_mismatches = []
+
+            for _, row in all_comparables.head(max_examples).iterrows():
+                appraisal_severity = extract_severity(row.get("indication"))
+
+                if (
+                    appraisal_severity
+                    and appraisal_severity != user_severity
+                ):
+                    severity_mismatches.append(
+                        row.get("appraisal_id", "?")
+                    )
+
+            if severity_mismatches:
+                label = "Population mismatch with retrieved precedent"
+
+                existing_sources = theme_sources.get(label, [])
+
+                combined_sources = list(dict.fromkeys(
+                    existing_sources + severity_mismatches
+                ))
+
+                seen_labels[label] = (
+                    "⚠️",
+                    len(combined_sources)
+                )
+
+                theme_sources[label] = combined_sources
+
+
+    # NEW — treatment-effect waning across ALL retrieved comparables
+    if all_comparables is not None:
+        waning_matches = []
+
+        for _, row in all_comparables.iterrows():
+            detailed = row.get("detailed_reasoning")
+            rejection = row.get("rejection_reasoning")
+
+            text = " ".join([
+                str(detailed) if pd.notna(detailed) else "",
+                str(rejection) if pd.notna(rejection) else "",
+            ]).lower()
+
+            if any(keyword in text for keyword in WANING_KEYWORDS):
+                waning_matches.append(
+                    row.get("appraisal_id", "?")
+                )
+
+        if waning_matches:
+            label = "Treatment effect waning / durability uncertainty"
+
+            seen_labels[label] = (
+                "⚠️",
+                len(waning_matches)
+            )
+
+            theme_sources[label] = list(
+                dict.fromkeys(waning_matches)
+            )
     ranked = sorted(seen_labels.items(), key=lambda x: x[1][1], reverse=True)
     return ranked, total, theme_sources
 
@@ -500,10 +745,19 @@ def structure_reasoning_card(row, has_detail_col):
     # Prefer the curated evidence note over regex-scraping the prose.
     icer_line = None
     note = row.get("icer_evidence_note")
-    if pd.notna(note) and str(note).strip().lower() not in ("", "not specified"):
+
+    if pd.notna(row.get("icer_lower")):
+        icer_line = format_historical_icer(row)
+
+        if pd.notna(note) and str(note).strip().lower() not in ("", "not specified"):
+            icer_line += f" — {str(note).strip()}"
+
+    elif pd.notna(note) and str(note).strip().lower() not in ("", "not specified"):
         icer_line = str(note).strip()
+
     elif "no publishable numeric icer" in lower or "no publishable icer" in lower:
         icer_line = "No publishable ICER available"
+
     elif "£" in raw:
         matches = re.findall(r"£[\d,]+(?:\s*per\s*QALY|/QALY)?", raw)
         icer_line = "; ".join(dict.fromkeys(matches[:3])) if matches else None
@@ -547,7 +801,7 @@ def generate_assessment_pdf(
     drug_name, indication, estimated_cost, end_of_life, comparator, threshold,
     appraisal_type, total_similar, recommended_count, optimised_count,
     rejected_count, managed_count, terminated_count, approval_rate,
-    similar, patterns, warnings_list, verdict, icer_provided, cost_display,
+    similar, patterns, warnings_list, verdict, icer_provided, cost_display, research_questions
 ):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
@@ -709,16 +963,28 @@ def generate_assessment_pdf(
     content.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#bdc3c7")))
 
     content.append(Paragraph("Similar NICE Appraisals (Top 10)", heading))
-    sim_data = [["Drug", "Decision", "Indication", "Year", "TA ID"]]
+    sim_data = [["Drug", "Decision", "Indication", "Year", "TA ID", "Historical ICER"]]
     for _, row in similar.head(10).iterrows():
         sim_data.append([
-            str(row["drug_name"])[:18],
+            str(row["drug_name"])[:16],
             str(row["decision_simple"]),
-            str(row["indication"])[:38],
+            str(row["indication"])[:30],
             str(row.get("year_label", row.get("year", ""))),
             str(row["appraisal_id"]),
+            format_historical_icer(row)
+            if pd.notna(row.get("icer_lower"))
+            else "Not reported",
         ])
-    sim_table = Table(sim_data, colWidths=[3.5 * cm, 3.2 * cm, 7 * cm, 2 * cm, 1.8 * cm])
+    sim_table = Table(
+    sim_data,
+    colWidths=[
+        2.8 * cm,
+        2.6 * cm,
+        5.2 * cm,
+        1.5 * cm,
+        1.5 * cm,
+        4.4 * cm,
+    ])
     sim_table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#34495e")),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
@@ -775,45 +1041,33 @@ def generate_assessment_pdf(
     content.append(two_col2)
     content.append(Spacer(1, 0.3 * cm))
     content.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#bdc3c7")))
-
-    content.append(Paragraph("Strategic Recommendations", heading))
-    if "Likely" in verdict:
-        recs = [
-            f"Ensure robust clinical evidence vs {comparator or 'comparator'}",
-            "Prepare for commercial negotiation - confidential discount likely required",
-            "Evidence end-of-life criteria clearly" if end_of_life == "Yes"
-            else "Consider CDF route if evidence is immature",
-            f"{optimised_count} similar drugs approved with conditions - prepare for optimisation",
-            "Commission full probabilistic sensitivity analysis before submission",
-        ]
-    elif "Borderline" in verdict:
-        recs = [
-            "Explore Cancer Drugs Fund / managed access route as primary strategy",
-            f"Strengthen clinical evidence package vs {comparator or 'comparator'}",
-            f"Consider price reduction to bring ICER below £{threshold:,}/QALY",
-            "Conduct full PSA to quantify uncertainty range",
-            "Engage NICE scientific advice before formal submission",
+    content.append(Paragraph("Research Questions", heading))
+    if research_questions:
+        question_rows = [
+            [Paragraph(f"{i + 1}. {question}", body)]
+            for i, question in enumerate(research_questions)
         ]
     else:
-        recs = [
-            "Substantial price reduction required before submission",
-            "Re-examine QALY estimates - are utility values robust?",
-            "Consider alternative indication with stronger clinical evidence",
-            "Engage NICE scientific advice before submission",
-            "Review managed access options as interim route to market",
-        ]
-
-    rec_table = Table([[Paragraph(f"{i + 1}. {r}", body)] for i, r in enumerate(recs)],
-                      colWidths=[18 * cm])
-    rec_table.setStyle(TableStyle([
+        question_rows = [[
+            Paragraph(
+                "No specific research questions were generated because no matching "
+                "risk themes were identified in the retrieved appraisal set.",
+                body
+            )
+        ]]
+    question_table = Table(
+        question_rows,
+        colWidths=[18 * cm]
+    )
+    question_table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#eaf4fb")),
-        ("TOPPADDING", (0, 0), (-1, -1), 3),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
         ("LEFTPADDING", (0, 0), (-1, -1), 8),
         ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#2980b9")),
         ("LINEBELOW", (0, 0), (-1, -2), 0.3, colors.HexColor("#d6eaf8")),
     ]))
-    content.append(rec_table)
+    content.append(question_table)
     content.append(Spacer(1, 0.3 * cm))
     content.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#bdc3c7")))
     content.append(Spacer(1, 0.1 * cm))
@@ -855,6 +1109,12 @@ Outside those areas, the tool falls back to indication-keyword retrieval and say
 Where a row has been through this tagging process, the specific basis for each tag
 is available — look for "How this row's similarity tags were assigned" wherever
 that appraisal appears.
+
+**Curated reliability approach:** rather than relying solely on automated AI extraction
+at scale, this dataset uses a curated review layer for key appraisal fields and retains
+source/provenance information where available. Automated extraction is treated as a
+starting point, not verification in itself. The aim is to prioritise traceability and
+auditability over maximising the number of fields extracted automatically.
 
 **Disease area (Therapy Area filter):** this classification covers all
 {TOTAL_ROWS:,} rows and predates the tagging pass above — it isn't independently
@@ -1152,6 +1412,9 @@ with st.expander("Advanced profile (improves similarity matching where tagged da
         mechanism_input = st.selectbox(
             "Mechanism of action",
             vocab_options(VOCAB, "mechanism_of_action", ["Not specified"]))
+        patient_population_size_input = st.selectbox(
+            "Patient population size",
+            vocab_options(VOCAB,"patient_population_size",["Not specified"]))
     with p2:
         biomarker_input = st.selectbox(
             "Biomarker", vocab_options(VOCAB, "biomarker", ["Not specified"]))
@@ -1170,7 +1433,7 @@ if st.button("Retrieve Comparable Appraisals", type="primary"):
     st.session_state.hta_query_ran = True
     # A genuinely new query resets the chat — its grounding data has changed.
     new_signature = (drug_name, indication, keyword, mechanism_input,
-                      line_of_therapy_input, biomarker_input, comparator_type_input)
+                      line_of_therapy_input, biomarker_input, comparator_type_input, patient_population_size_input)
     if new_signature != st.session_state.chat_signature:
         st.session_state.chat_history = []
         st.session_state.chat_signature = new_signature
@@ -1244,6 +1507,7 @@ if st.session_state.hta_query_ran:
         "biomarker": biomarker_input,
         "orphan_status": None,
         "appraisal_type": appraisal_type,
+        "patient_population_size": patient_population_size_input
     }
     # Fields that represent genuinely optional profile depth. therapeutic_area
     # is auto-inferred (never a user choice) and appraisal_type is a required
@@ -1252,7 +1516,7 @@ if st.session_state.hta_query_ran:
     # never touched the Advanced profile at all.
     OPTIONAL_PROFILE_FIELDS = (
         "mechanism_of_action", "line_of_therapy", "comparator_type",
-        "biomarker", "orphan_status",
+        "biomarker", "orphan_status","patient_population_size"
     )
     query_has_tags = any(
         query_profile.get(k) and query_profile.get(k) != "Not specified"
@@ -1446,33 +1710,69 @@ if st.session_state.hta_query_ran:
               total_similar - len(with_icer) - len(note_only))
 
     if len(with_icer) > 0:
-        approved_icer = with_icer[
-            with_icer["decision_simple"].isin(["Recommended", "Optimised"])]
-        if len(approved_icer) > 0:
-            if len(approved_icer) < 3:
-                st.warning(
-                    f"Only {len(approved_icer)} recommended/optimised appraisal(s) here have "
-                    f"a public numeric ICER. Treat as an isolated historical data point, not "
-                    f"a benchmark range.")
-            i1, i2, i3 = st.columns(3)
-            i1.metric("Lowest reported ICER", f"£{approved_icer['icer_lower'].min():,.0f}")
-            i2.metric("Highest reported ICER", f"£{approved_icer['icer_lower'].max():,.0f}")
-            avg = with_icer["icer_lower"].mean()
-            if icer_provided:
-                i3.metric("Your ICER vs mean",
-                          f"{'Above' if estimated_cost > avg else 'Below'} (£{avg:,.0f})")
-            else:
-                i3.metric("Mean reported ICER", f"£{avg:,.0f}")
+        with_icer = with_icer.copy()
 
-        icer_cols = ["appraisal_id", "drug_name", "indication", "icer_lower", "icer_upper",
-                     "decision_simple", "economic_source_document_type"]
+        with_icer["_icer_type"] = with_icer.apply(classify_historical_icer,axis=1)
+        # Aggregate statistics must only use genuine point estimates
+        point_icers = with_icer[with_icer["_icer_type"] == "point_estimate"]
+        approved_point_icers = point_icers[
+            point_icers["decision_simple"].isin(["Recommended", "Optimised"])]
+
+        if len(approved_point_icers) > 0:
+            i1, i2, i3 = st.columns(3)
+
+            i1.metric(
+                "Lowest point-estimate ICER",
+                f"£{approved_point_icers['icer_lower'].min():,.0f}")
+            i2.metric(
+                "Highest point-estimate ICER",
+                f"£{approved_point_icers['icer_lower'].max():,.0f}")
+
+            avg = point_icers["icer_lower"].mean()
+
+            if icer_provided:
+                i3.metric(
+                    "Your ICER vs point-estimate mean",
+                    f"{'Above' if estimated_cost > avg else 'Below'} (£{avg:,.0f})")
+            else:
+                i3.metric(
+                    "Mean point-estimate ICER",
+                    f"£{avg:,.0f}")
+        else:
+            st.caption(
+                "No confirmed point-estimate ICERs are available for aggregate benchmarking "
+                "in this retrieved set."
+            )
+
+        icer_display = with_icer.copy()
+
+        icer_display["ICER"] = icer_display.apply(
+            lambda r: format_historical_icer(r, include_type=False),
+            axis=1)
+
+        icer_display["ICER Type"] = icer_display.apply(
+            lambda r: ICER_TYPE_LABELS[classify_historical_icer(r)],
+            axis=1)
+
+        icer_cols = [
+            "appraisal_id",
+            "drug_name",
+            "indication",
+            "ICER",
+            "ICER Type",
+            "decision_simple",
+            "economic_source_document_type",]
+
         st.dataframe(
-            with_icer[icer_cols].rename(columns={
-                "appraisal_id": "TA ID", "drug_name": "Drug", "indication": "Indication",
-                "icer_lower": "ICER Lower", "icer_upper": "ICER Upper",
+            icer_display[icer_cols].rename(columns={
+                "appraisal_id": "TA ID",
+                "drug_name": "Drug",
+                "indication": "Indication",
                 "decision_simple": "Decision",
-                "economic_source_document_type": "Source Document"}),
-            width="stretch", hide_index=True)
+                "economic_source_document_type": "Source Document",
+            }),
+            width="stretch",
+            hide_index=True)
         st.caption(
             "Published figures are not consistently labelled as company base-case, "
             "EAG-corrected, or committee-preferred. Treat as indicative published values, "
@@ -1491,27 +1791,54 @@ if st.session_state.hta_query_ran:
                 st.markdown(f"> {row['icer_evidence_note']}")
 
     # ── Rejection reasoning ────────────────────────────────
+    patterns = []
     rejected_similar = similar[similar["decision_simple"] == "Not Recommended"]
 
     if len(rejected_similar) > 0:
-        ranked_themes, theme_sample, theme_sources = synthesise_themes(rejected_similar)
+        ranked_themes, theme_sample, theme_sources = synthesise_themes(rejected_similar, query_profile = query_profile, all_comparables=similar,indication=indication)
         patterns = [(label, count) for label, (emoji, count) in ranked_themes]
         if ranked_themes:
             st.markdown(f"**Common themes across {theme_sample} rejected comparable appraisals:**")
             st.dataframe(
                 pd.DataFrame([{"Theme": f"{emoji} {label}",
-                               "Frequency": f"{count}/{theme_sample}"}
+                               "Frequency":  (f"{count}/{len(similar)}"
+                        if label in (
+                            "Treatment effect waning / durability uncertainty",
+                            "Population mismatch with retrieved precedent",
+                        )
+                        else f"{count}/{theme_sample}"
+                    )}
                               for label, (emoji, count) in ranked_themes]),
                 width="stretch", hide_index=True)
 
             for label, (emoji, count) in ranked_themes:
                 with st.expander(f"Where '{label}' was raised"):
                     for aid in theme_sources.get(label, []):
-                        qr = rejected_similar[rejected_similar["appraisal_id"] == aid]
+                        qr = similar[similar["appraisal_id"] == aid]
                         quote = None
-                        if len(qr) > 0 and pd.notna(qr.iloc[0].get("original_nice_comment")):
-                            quote = str(qr.iloc[0]["original_nice_comment"]).strip()
-                            if len(quote) > 220:
+                        if len(qr) > 0:
+                            source_row = qr.iloc[0]
+
+                            for col in [
+                                "original_nice_comment",
+                                "detailed_reasoning",
+                                "rejection_reasoning",
+                            ]:
+                                value = source_row.get(col)
+
+                                if pd.notna(value):
+                                    value = str(value).strip()
+
+                                    if value.lower() not in (
+                                        "",
+                                        "not applicable",
+                                        "not specified",
+                                        "nan",
+                                    ):
+                                        quote = value
+                                        break
+
+                            if quote and len(quote) > 220:
                                 quote = quote[:220].rsplit(" ", 1)[0] + "…"
                         st.markdown(f"**{aid}**")
                         st.markdown(f"> {quote}" if quote else
@@ -1625,7 +1952,9 @@ if st.session_state.hta_query_ran:
     nonroutine = similar[similar["decision_simple"].isin(
         ["Not Recommended", "Terminated", "Managed Access"])]
     if len(nonroutine) >= 3:
-        gap_themes, gap_sample, _ = synthesise_themes(nonroutine, max_examples=15)
+        gap_themes, gap_sample, _ = synthesise_themes(
+            nonroutine, query_profile=query_profile, all_comparables=similar,
+            indication=indication, max_examples=15)
         if gap_themes:
             st.markdown("**Evidence gaps suggested by historical precedent:**")
             st.caption(
@@ -1881,11 +2210,12 @@ Possible next steps:
         "economic modelling, evidence review, or professional market access advice.")
 
     st.markdown("---")
+    research_questions = research_questions_from_themes(patterns)
     pdf_buffer = generate_assessment_pdf(
         drug_name, indication, estimated_cost, end_of_life, comparator, threshold,
         appraisal_type, total_similar, recommended_count, optimised_count,
         rejected_count, managed_count, terminated_count, approval_rate,
-        similar, patterns, warnings_list, verdict, icer_provided, cost_display,
+        similar, patterns, warnings_list, verdict, icer_provided, cost_display, research_questions
     )
     pdf_filename_base = drug_name if drug_name else re.sub(r"\s+", "_", indication.strip())[:40]
     st.download_button(
