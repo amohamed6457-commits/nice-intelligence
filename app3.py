@@ -1,17 +1,26 @@
 """
-NICE Technology Appraisal Intelligence — dashboard.
+NICE Technology Appraisal Intelligence — dashboard, with G-BA and HAS views.
 
-Data contract: NICE_v12_clean.xlsx
-  Sheet1          — appraisal rows (adds year_start, year_label, search_blob)
-  Tag_Vocabulary  — single source of truth for every categorical dropdown
-  Enrichment_Log  — provenance, surfaced in the Methodology expander
+Data contract: NICE_v14_updated_2026-09-28.xlsx
+  Sheet1               — NICE appraisal rows (adds year_start, year_label, search_blob)
+  G-BA_Recent          — G-BA AMNOG added-benefit resolutions (Germany)
+  HAS_Recent           — HAS early-access / Transparency Committee decisions (France)
+  Appraisal_Documents  — official source documents for every agency, keyed by ID
+  Tag_Vocabulary       — single source of truth for every categorical dropdown
+  Enrichment_Log       — provenance, surfaced in the Methodology expanders
+
+The sidebar's "HTA body" switch picks the view. The NICE view is the original
+dashboard; the G-BA and HAS views are driven by AGENCY_CONFIG, so adding rows
+to their sheets needs no code changes.
 """
 
 import io
+import os
 import re
+import warnings
 import requests
 from collections import Counter
-from datetime import date
+from datetime import date, datetime
 
 import pandas as pd
 import plotly.express as px
@@ -30,7 +39,7 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-DATA_FILE = "NICE_v14_updated_2026-08-17.xlsx"
+DATA_FILE = "NICE_v14_updated_2026-09-28.xlsx"
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 st.set_page_config(
@@ -38,6 +47,18 @@ st.set_page_config(
     page_icon="💊",
     layout="wide",
 )
+
+# Keep filters and Explorer inputs when switching HTA body. Streamlit deletes a
+# widget's value at the end of any run in which that widget wasn't drawn, so
+# NICE → G-BA → NICE would otherwise wipe every NICE input — and, because
+# hta_query_ran survives, land on a bare "Please enter an indication" warning
+# instead of the results that were on screen. Re-saving keyed values at the top
+# of each run is Streamlit's documented way to keep them. Only value widgets use
+# the "w_" key prefix: buttons and chat inputs can't be written this way. Their
+# defaults are set through session state rather than value=/index= arguments,
+# which is what lets this run without widget-state warnings.
+for _state_key in [k for k in st.session_state.keys() if str(k).startswith("w_")]:
+    st.session_state[_state_key] = st.session_state[_state_key]
 
 
 # Data loading
@@ -427,12 +448,13 @@ def build_chat_context(similar_df, drug_name, indication, icer_provided, cost_di
     return "\n\n".join(blocks)
 
 
-def ask_chat(api_key, context, history, question):
+def ask_chat(api_key, context, history, question, system_prompt=None):
     """
     One grounded turn. Returns (answer_text, error_message) — exactly one
     is None. Uses the raw HTTP API rather than a client library, since it's
     the only Anthropic call this app makes and keeps the dependency list
-    unchanged.
+    unchanged. system_prompt defaults to the NICE prompt; the G-BA and HAS
+    views pass their own.
     """
     messages = list(history) + [{"role": "user", "content": question}]
     try:
@@ -446,7 +468,8 @@ def ask_chat(api_key, context, history, question):
             json={
                 "model": CHAT_MODEL,
                 "max_tokens": 1000,
-                "system": CHAT_SYSTEM_PROMPT + "\n\n--- Retrieved precedent data ---\n" + context,
+                "system": ((system_prompt or CHAT_SYSTEM_PROMPT)
+                           + "\n\n--- Retrieved precedent data ---\n" + context),
                 "messages": messages,
             },
             timeout=30,
@@ -1083,6 +1106,1687 @@ def generate_assessment_pdf(
     return buffer
 
 
+# ═════════════════════════════════════════════════════════════════════════════
+# Multi-agency support — G-BA (Germany) and HAS (France)
+#
+# G-BA and HAS don't answer NICE's question. The G-BA rates added clinical
+# benefit against a comparator it sets itself (AMNOG); HAS rates clinical
+# benefit (SMR/ASMR) and decides early access. Neither produces an ICER in
+# these records, so their views are built around their own outcome scales
+# rather than squeezed into the NICE ICER-vs-threshold frame. Everything below
+# is driven by AGENCY_CONFIG, so loading more rows into the G-BA_Recent /
+# HAS_Recent sheets needs no code changes.
+# ═════════════════════════════════════════════════════════════════════════════
+
+AGENCY_LABELS = {
+    "NICE": "🇬🇧 NICE — England",
+    "G-BA": "🇩🇪 G-BA — Germany",
+    "HAS": "🇫🇷 HAS — France",
+}
+AGENCY_FLAGS = {"NICE": "🇬🇧", "G-BA": "🇩🇪", "HAS": "🇫🇷"}
+AGENCY_SORT = {"NICE": 0, "G-BA": 1, "HAS": 2}
+SMALL_AGENCY_SET = 20       # below this, a view carries an "illustrative only" note
+SYNTHESIS_MAX_ITEMS = 15    # per evidence-synthesis block before "narrow the selection"
+DOC_INDEX_COLUMNS = ["Institution", "Appraisal_ID", "Document_Type",
+                     "Document_Title", "Date", "Source_URL", "Notes"]
+
+
+def data_version():
+    """
+    Cache key for the workbook: its path and last-modified time. The G-BA / HAS
+    loaders take this as an argument, so replacing the workbook — or pointing
+    DATA_FILE at a new one — refreshes those views on the next run instead of
+    serving rows cached from the old file.
+    """
+    try:
+        return (DATA_FILE, os.path.getmtime(DATA_FILE))
+    except OSError:
+        return (DATA_FILE, None)
+
+
+@st.cache_data
+def load_agency_sheet(sheet_name, version):
+    """Raw rows for a non-NICE agency. A missing sheet yields an empty frame, so
+    an older workbook still opens — the NICE view never depends on these."""
+    try:
+        return pd.read_excel(version[0], sheet_name=sheet_name)
+    except Exception:
+        return pd.DataFrame()
+
+
+@st.cache_data
+def load_document_index(version):
+    """Appraisal_Documents: one row per official source document, all agencies."""
+    try:
+        docs = pd.read_excel(version[0], sheet_name="Appraisal_Documents")
+    except Exception:
+        return pd.DataFrame(columns=DOC_INDEX_COLUMNS)
+    for col in ("Institution", "Appraisal_ID"):
+        docs[col] = docs[col].astype(str).str.strip()
+    return docs
+
+
+# ── Text helpers ─────────────────────────────────────────────────────────────
+
+_PLACEHOLDER_VALUES = {"", "nan", "none", "n/a", "na", "-", "—", "not specified", "not reported",
+                       "sans objet", "non applicable", "non évalué", "non evalue"}
+# Notes that are useful on one record but say nothing across a set — English and
+# French forms, since HAS rows may be entered either way.
+_NOTE_PREFIXES = ("not applicable", "not assessed", "not reported", "not recorded",
+                  "non applicable", "non évalué", "non evalue", "non renseigné",
+                  "non renseigne", "non disponible", "sans objet", "n/a")
+
+
+def _text(value):
+    """Stripped string, or None for blank / NaN / bare placeholder values."""
+    if value is None:
+        return None
+    try:
+        if pd.isna(value):
+            return None
+    except (TypeError, ValueError):
+        pass
+    s = str(value).strip()
+    return None if s.lower() in _PLACEHOLDER_VALUES else s
+
+
+def _substantive(value):
+    """Like _text, but also drops 'Not applicable — …' / 'Not assessed …' notes.
+    Those are worth showing on a single record but are noise in a cross-set
+    synthesis ('Comparator: not applicable' three times says nothing)."""
+    s = _text(value)
+    if s and s.lower().startswith(_NOTE_PREFIXES):
+        return None
+    return s
+
+
+def _shorten(text, limit):
+    s = str(text)
+    return s if len(s) <= limit else s[:limit].rsplit(" ", 1)[0] + "…"
+
+
+def _md_safe(text):
+    """Stop '$' in source text being rendered as LaTeX by st.markdown."""
+    return str(text).replace("$", "\\$")
+
+
+def _md_link(label, url):
+    """Markdown link that survives brackets in the label and parentheses in the URL."""
+    label = str(label).replace("[", "(").replace("]", ")")
+    url = str(url).strip().replace(" ", "%20").replace("(", "%28").replace(")", "%29")
+    return f"[{label}]({url})"
+
+
+def _parse_date(value):
+    """
+    One workbook date → Timestamp (NaT if unreadable).
+
+    ISO text ('2026-09-03') is read as ISO; anything else day-first, because
+    G-BA and HAS dates are European — '03.09.2026' and '03/09/2026' are 3
+    September, not 9 March. Real Excel dates pass straight through, and bare
+    Excel serial numbers (46268) are converted rather than read as 1970.
+    """
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return pd.NaT
+    if isinstance(value, (pd.Timestamp, datetime)):
+        return pd.Timestamp(value)
+    if isinstance(value, (int, float)):
+        if 20000 <= value <= 80000:
+            return pd.Timestamp("1899-12-30") + pd.Timedelta(days=float(value))
+        return pd.NaT
+    s = str(value).strip()
+    if not s or s.lower() in _PLACEHOLDER_VALUES:
+        return pd.NaT
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        if re.match(r"^\d{4}-\d{1,2}-\d{1,2}(?:[ T]|$)", s):
+            return pd.to_datetime(s[:10], format="%Y-%m-%d", errors="coerce")
+        return pd.to_datetime(s, dayfirst=True, errors="coerce")
+
+
+def _to_datetime(series):
+    return pd.Series([_parse_date(v) for v in series], index=series.index,
+                     dtype="datetime64[ns]")
+
+
+def _date_span(dates):
+    d = dates.dropna()
+    if d.empty:
+        return "decision dates not recorded"
+    lo, hi = d.min(), d.max()
+    if (lo.year, lo.month) == (hi.year, hi.month):
+        return f"{lo:%B %Y}"
+    if lo.year == hi.year:
+        return f"{lo:%b}–{hi:%b %Y}"
+    return f"{lo:%b %Y}–{hi:%b %Y}"
+
+
+def _decision_text(row):
+    return " ".join(
+        _text(row.get(c)) or "" for c in ("decision_simple", "decision_raw")
+    ).lower()
+
+
+# ── G-BA outcome scale ───────────────────────────────────────────────────────
+
+GBA_OUTCOME_ORDER = [
+    "Major added benefit",
+    "Considerable added benefit",
+    "Minor added benefit",
+    "Non-quantifiable added benefit",
+    "Mixed by subgroup",
+    "No added benefit proven",
+    "Lesser benefit",
+    "Unclassified",
+]
+GBA_POSITIVE = {
+    "Major added benefit", "Considerable added benefit",
+    "Minor added benefit", "Non-quantifiable added benefit",
+}
+# Positive extents are an ordered scale, so they take one green ramp (dark =
+# major); the rest are distinct hues. Validated for colour-vision separation.
+GBA_COLORS = {
+    "Major added benefit": "#145a32",
+    "Considerable added benefit": "#1e8449",
+    "Minor added benefit": "#52be80",
+    "Non-quantifiable added benefit": "#2e86c1",
+    "Mixed by subgroup": "#f39c12",
+    "No added benefit proven": "#e74c3c",
+    "Lesser benefit": "#922b21",
+    "Unclassified": "#95a5a6",
+}
+GBA_MD_COLORS = {
+    "Major added benefit": "green", "Considerable added benefit": "green",
+    "Minor added benefit": "green", "Non-quantifiable added benefit": "blue",
+    "Mixed by subgroup": "orange", "No added benefit proven": "red",
+    "Lesser benefit": "red",
+}
+
+
+_GBA_EXTENT_PATTERNS = [
+    # Whole-word patterns, so 'majority' never reads as 'major'. English as the
+    # workbook records it, plus the German forms used in the resolutions.
+    ("Lesser benefit", r"\bless(?:er)? benefit\b|\bgeringere[nr]? nutzen\b"),
+    ("No added benefit proven",
+     r"\bno (?:added|additional) benefit\b|\bnot proven\b|\bnicht belegt\b"
+     r"|\bkein zusatznutzen\b"),
+    ("Major added benefit", r"\bmajor\b|\berheblich(?:e[nrs]?)?\b"),
+    ("Considerable added benefit", r"\bconsiderable\b|\bbeträchtlich(?:e[nrs]?)?\b"),
+    ("Non-quantifiable added benefit",
+     r"\bnon-quantifiable\b|\bnot quantifiable\b|\bnicht quantifizierbar(?:e[nrs]?)?\b"),
+    ("Minor added benefit", r"\bminor\b|\bgering(?:e[nrs]?)?\b"),
+]
+_GBA_CERTAINTY_PATTERNS = [
+    ("Proof", r"\bproof\b|\bbeleg für\b"),
+    ("Indication", r"\bindication (?:of|for)\b|\bindication\s*[,)]|:\s*indication\b|\bhinweis\b"),
+    ("Hint", r"\bhint\b|\banhaltspunkt\b"),
+]
+
+
+def _clauses(value):
+    """Split free text into clauses — one per subgroup finding, usually."""
+    s = _text(value)
+    if not s:
+        return []
+    return [c.strip().lower() for c in re.split(r"[;\n|]|(?<=[A-Za-z0-9)])\.\s+", s)
+            if c.strip()]
+
+
+def _extents_in(value):
+    found = []
+    for clause in _clauses(value):
+        for extent, pattern in _GBA_EXTENT_PATTERNS:
+            if re.search(pattern, clause) and extent not in found:
+                found.append(extent)
+    return found
+
+
+def _gba_extents(row):
+    """(extents named in the curated decision fields, extents in the added-benefit text)."""
+    decision = []
+    for col in ("decision_simple", "decision_raw"):
+        for extent in _extents_in(row.get(col)):
+            if extent not in decision:
+                decision.append(extent)
+    return decision, _extents_in(row.get("added_benefit_assessment"))
+
+
+def gba_outcome(row):
+    """
+    Bucket a G-BA resolution onto the AMNOG extent-of-added-benefit scale.
+
+    decision_simple is curated free text ('Added benefit: hint,
+    non-quantifiable', 'Mixed: no added benefit for most groups; one subgroup
+    has a hint'). That reads well but would give every new phrasing its own
+    metric card, so each clause is matched against the six statutory extents.
+    A resolution naming different extents for different subgroups — or saying
+    'mixed' outright — is 'Mixed by subgroup', whether or not the word appears.
+    The curated decision fields are preferred; the longer added-benefit text is
+    only used when they name no extent. The recorded wording is always shown
+    alongside, so the bucketing never hides anything.
+    """
+    decision, detail = _gba_extents(row)
+    extents = decision or detail
+    mixed = re.search(r"\bmixed\b|\bby subgroup\b|\bdiffers? by\b", _decision_text(row))
+    if mixed or len(extents) > 1:
+        return "Mixed by subgroup"
+    return extents[0] if extents else "Unclassified"
+
+
+def gba_certainty(row):
+    """
+    Certainty of evidence behind a rating: proof / indication / hint.
+
+    Read from the clauses that actually carry a rating (decision fields first),
+    so 'indication' in its therapeutic sense elsewhere in the text is never
+    taken for the AMNOG certainty level. None where no benefit was found.
+    """
+    if row.get("outcome") in ("No added benefit proven", "Unclassified"):
+        return None
+    rated = GBA_POSITIVE | {"Lesser benefit"}
+    decision_clauses = (_clauses(row.get("decision_simple"))
+                        + _clauses(row.get("decision_raw")))
+    detail_clauses = _clauses(row.get("added_benefit_assessment"))
+
+    def first_certainty(clauses, rated_only):
+        for clause in clauses:
+            if rated_only and not any(
+                    re.search(p, clause) for e, p in _GBA_EXTENT_PATTERNS if e in rated):
+                continue
+            for level, pattern in _GBA_CERTAINTY_PATTERNS:
+                if re.search(pattern, clause):
+                    return level
+        return None
+
+    return (first_certainty(decision_clauses, True)
+            or first_certainty(detail_clauses, True)
+            or first_certainty(decision_clauses, False))
+
+
+def gba_favourable(row):
+    """
+    True where at least one patient subgroup received an added benefit; False
+    where every named rating is 'no added benefit' or 'lesser benefit'; None
+    where nothing is named.
+
+    For single-outcome rows only the curated decision fields count, so a
+    manufacturer's claim quoted in the longer text can't flip the result. Mixed
+    rows also read the added-benefit text, which is where the subgroup ratings
+    are usually spelled out.
+    """
+    decision, detail = _gba_extents(row)
+    mixed = row.get("outcome") == "Mixed by subgroup"
+    named = set(decision)
+    if mixed or not named:
+        named |= set(detail)
+    if named & GBA_POSITIVE:
+        return True
+    # 'One subgroup has a hint' names a certainty level but not its extent — it
+    # could be a hint of benefit or of lesser benefit, so leave it undetermined.
+    if mixed and "Lesser benefit" not in named and any(
+            re.search(pattern, clause)
+            for clause in _clauses(row.get("decision_simple")) + _clauses(row.get("decision_raw"))
+            for _, pattern in _GBA_CERTAINTY_PATTERNS):
+        return None
+    return False if named else None
+
+
+def gba_subtitle(frame):
+    return f"{len(frame):,} AMNOG early benefit assessments (§35a SGB V)"
+
+
+def gba_headlines(frame):
+    n = len(frame)
+    positive = int(frame["favourable"].eq(True).sum())
+    return [
+        ("Added benefit in ≥1 subgroup",
+         f"{positive}/{n}" + (f" ({positive / n * 100:.0f}%)" if n else ""),
+         "Major, considerable, minor or non-quantifiable added benefit, plus mixed "
+         "resolutions where at least one subgroup received a positive rating. Descriptive "
+         "of this selection only. Not equivalent to NICE's recommendation proportion: a "
+         "medicine without added benefit is still reimbursed in Germany; the rating shapes "
+         "its negotiated price."),
+    ]
+
+
+# ── HAS outcome scale ────────────────────────────────────────────────────────
+
+HAS_OUTCOME_ORDER = [
+    "Early access granted",
+    "Early access renewed",
+    "Early access refused",
+    "Early access — other",
+    "ASMR I", "ASMR II", "ASMR III", "ASMR IV", "ASMR V",
+    "SMR sufficient, no ASMR recorded",
+    "SMR mixed by population",
+    "SMR insufficient",
+    "Unclassified",
+]
+# ASMR I–IV is an ordered scale → one green ramp (dark = major improvement).
+HAS_COLORS = {
+    "Early access granted": "#17a589",
+    "Early access renewed": "#2a78d6",
+    "Early access refused": "#e74c3c",
+    "Early access — other": "#95a5a6",
+    "ASMR I": "#0f3b22",
+    "ASMR II": "#176b3a",
+    "ASMR III": "#239b56",
+    "ASMR IV": "#45c07a",
+    "ASMR V": "#7f8c8d",
+    "SMR sufficient, no ASMR recorded": "#8e44ad",
+    "SMR mixed by population": "#f39c12",
+    "SMR insufficient": "#922b21",
+    "Unclassified": "#bdc3c7",
+}
+HAS_MD_COLORS = {
+    "Early access granted": "green", "Early access renewed": "blue",
+    "Early access refused": "red", "ASMR I": "green", "ASMR II": "green",
+    "ASMR III": "green", "ASMR IV": "green", "ASMR V": "gray",
+    "SMR sufficient, no ASMR recorded": "violet", "SMR mixed by population": "orange",
+    "SMR insufficient": "red",
+}
+SMR_ORDER = ["Important", "Moderate", "Low", "Mixed", "Insufficient"]
+_SMR_PATTERNS = [
+    ("Insufficient", r"insuffis|insuffic"),
+    ("Important", r"\bimportant\b"),
+    ("Moderate", r"\bmodér|\bmoder"),
+    ("Low", r"\bfaible\b|\blow\b"),
+]
+_ASMR_ORDER = ["I", "II", "III", "IV", "V"]
+_HAS_EA_NEGATIVE = (r"\brefus|\bnot renewed\b|\bnon[- ]?renouvel|\bnot granted\b"
+                    r"|\bdéfavorable\b|\bdefavorable\b|\bunfavou?rable\b|\brejected\b")
+
+
+def has_is_early_access(row):
+    """Decided by assessment_type where it's filled in — a Transparency Committee
+    opinion that merely mentions a past early-access period is still an opinion.
+    Falls back to the decision wording only when the type is blank."""
+    source = _text(row.get("assessment_type")) or _decision_text(row)
+    t = source.lower()
+    return any(k in t for k in ("early access", "early-access", "accès précoce", "acces precoce"))
+
+
+def asmr_level(value):
+    """'ASMR IV (mineure)' → 'IV'. Where different populations got different
+    levels, the best one (the headline counts 'improvement for ≥1 population').
+    None where not assessed, not applicable or unparseable."""
+    s = _substantive(value)
+    if not s:
+        return None
+    levels = re.findall(r"\b(IV|V|I{1,3})\b", s.upper())
+    return min(levels, key=_ASMR_ORDER.index) if levels else None
+
+
+def smr_level(value):
+    """'SMR important' / 'modéré' / 'insuffisant' → a fixed English label;
+    'Mixed' where populations differ; None for anything unreadable, so a note
+    like 'Non évalué — accès précoce' is never counted as a rating."""
+    s = _substantive(value)
+    if not s:
+        return None
+    t = s.lower()
+    levels = [label for label, pattern in _SMR_PATTERNS if re.search(pattern, t)]
+    if not levels:
+        return None
+    return levels[0] if len(levels) == 1 else "Mixed"
+
+
+def has_outcome(row):
+    """
+    Early-access decisions → granted / renewed / refused; reimbursement opinions
+    → ASMR level, 'SMR insufficient', or an SMR-only bucket. Negative wording is
+    tested first: 'not renewed' contains 'renewed' and 'défavorable' contains
+    'favorable'. Anything unreadable is 'Unclassified' (the recorded wording is
+    still shown), rather than every new phrasing becoming its own category.
+    """
+    t = _decision_text(row)
+    if has_is_early_access(row):
+        if re.search(_HAS_EA_NEGATIVE, t):
+            return "Early access refused"
+        if re.search(r"\brenew|\brenouvel", t):
+            return "Early access renewed"
+        if re.search(r"\bgrant|\bauthori[sz]|\boctro[iy]|\baccord[ée]e?\b|\bfavou?rable\b", t):
+            return "Early access granted"
+        return "Early access — other"
+    smr = smr_level(row.get("SMR_rating"))
+    if smr == "Insufficient":
+        return "SMR insufficient"
+    level = asmr_level(row.get("ASMR_rating"))
+    if level:
+        return f"ASMR {level}"
+    if smr == "Mixed":
+        return "SMR mixed by population"
+    if smr:
+        return "SMR sufficient, no ASMR recorded"
+    return "Unclassified"
+
+
+def has_favourable(row):
+    """ASMR V (no improvement) is neutral, not a refusal: the medicine can still
+    be reimbursed, it just gains no price premium."""
+    outcome = row.get("outcome")
+    if outcome in ("Early access granted", "Early access renewed",
+                   "ASMR I", "ASMR II", "ASMR III", "ASMR IV"):
+        return True
+    if outcome in ("Early access refused", "SMR insufficient"):
+        return False
+    return None
+
+
+def has_ratings_text(row):
+    smr, asmr = _substantive(row.get("SMR_rating")), _substantive(row.get("ASMR_rating"))
+    parts = ([f"SMR: {smr}"] if smr else []) + ([f"ASMR: {asmr}"] if asmr else [])
+    return " · ".join(parts) or None
+
+
+def has_subtitle(frame):
+    early = int(frame["_early_access"].sum())
+    other = len(frame) - early
+    parts = ([f"{early} early access"] if early else []) + (
+        [f"{other} Transparency Committee / CEESP"] if other else [])
+    return f"{len(frame):,} HAS decisions ({', '.join(parts)})"
+
+
+def has_headlines(frame):
+    out = []
+    early = frame[frame["_early_access"]]
+    if len(early):
+        ok = int(early["outcome"].isin(["Early access granted", "Early access renewed"]).sum())
+        out.append(("Early access granted or renewed", f"{ok}/{len(early)}",
+                    "Early-access decisions in this selection that granted or renewed access."))
+    asmr = frame[frame["_asmr"].notna()]
+    if len(asmr):
+        ok = int(asmr["_asmr"].isin(["I", "II", "III", "IV"]).sum())
+        out.append(("ASMR I–IV", f"{ok}/{len(asmr)}",
+                    "Reimbursement opinions recognising some improvement in clinical benefit "
+                    "(ASMR V = none)."))
+    smr = frame[frame["_smr"].notna()]
+    if len(smr):
+        ok = int((smr["_smr"] != "Insufficient").sum())
+        out.append(("Sufficient SMR (≥1 population)", f"{ok}/{len(smr)}",
+                    "Opinions rating the actual clinical benefit sufficient for reimbursement "
+                    "in at least one population."))
+    return out
+
+
+# ── Methodology text & chat prompts ──────────────────────────────────────────
+
+GBA_METHODOLOGY = """
+**What the G-BA decides.** Under AMNOG (§35a SGB V) the G-BA rates the *added clinical
+benefit* of a new medicine against an **appropriate comparator therapy (zVT)** that the
+G-BA itself specifies — normally after an IQWiG dossier assessment, written statements
+and an oral hearing. The resolution feeds the price negotiation with the
+GKV-Spitzenverband. It is not a cost-effectiveness judgement.
+
+**How outcomes are shown.** The extent of added benefit is one of major, considerable,
+minor, non-quantifiable, no added benefit proven, or lesser benefit. Each positive rating
+carries a certainty of evidence (proof, indication or hint), and resolutions are often
+split by patient subgroup. The *Outcome* column maps each resolution onto that scale,
+using *Mixed by subgroup* where subgroups differ. The wording recorded in the workbook is
+always shown alongside it.
+
+**What doesn't carry over from the NICE view.** There is no ICER, willingness-to-pay
+threshold or threshold-based risk signal here, because the G-BA doesn't assess
+cost-effectiveness in this procedure. The closest headline to NICE's recommendation
+proportion is **added benefit in at least one subgroup**, but the two aren't equivalent: a
+medicine without added benefit stays reimbursable in Germany. The rating shapes its
+negotiated price, which is anchored to the cost of the comparator therapy.
+"""
+
+HAS_METHODOLOGY = """
+**What HAS decides.** The Transparency Committee (CT) rates **SMR**, the actual clinical
+benefit, which informs whether a medicine is listed for reimbursement and at what rate. It
+also rates **ASMR**, the improvement in clinical benefit from I (major) to V (none), which
+informs the price negotiation with the CEPS. The CT's opinions are advisory: the ministry
+decides listing and the health insurance union (UNCAM) sets the reimbursement rate. For
+some products the CEESP adds an efficiency opinion with an ICER in €/QALY. HAS also decides
+**early access** (accès précoce) for presumed-innovative medicines in serious, rare or
+disabling diseases that have no appropriate treatment.
+
+**How outcomes are shown.** Early-access decisions appear as granted, renewed or refused,
+and reimbursement opinions by ASMR level (or *SMR insufficient*). Early-access decisions
+carry no SMR/ASMR rating or ICER, so those fields read "Not assessed" rather than being
+inferred.
+
+**What doesn't carry over from the NICE view.** France has no explicit cost-effectiveness
+threshold, so there's no threshold-based risk signal. Where a CEESP ICER exists it's
+shown in €/QALY as published — never converted to £ or compared with NICE's threshold.
+"""
+
+_AGENCY_CHAT_RULES = """
+Rules, no exceptions:
+1. Answer ONLY using the {records} provided below. Do not use outside knowledge of {bodies}, \
+drugs or clinical practice beyond what's in this context, even if you know it.
+2. If the provided records don't contain enough information to answer, say so plainly — \
+never fill the gap with a plausible-sounding guess.
+3. {economics}
+4. When you draw a conclusion, name which record(s) it comes from (by ID, e.g. {example_id}) \
+so it can be checked against the source.
+5. Keep answers short and direct — a consultant is scanning this, not reading an essay.
+6. This is a descriptive summary of past decisions, not a prediction of {prediction}. If \
+asked to predict an outcome, say that's outside what this data can support.
+7. Where the data lists the same molecule's decision at another HTA body, you may compare \
+them, but say that NICE, the G-BA and HAS answer different questions (cost-effectiveness, \
+added clinical benefit, clinical benefit / early access), so a different outcome is not a \
+contradiction."""
+
+GBA_CHAT_PROMPT = (
+    "You are answering questions about a specific, already-selected set of G-BA early "
+    "benefit assessments (AMNOG, §35a SGB V) for a market access consultant. You are NOT "
+    "a general G-BA, IQWiG or market-access assistant.\n"
+    + _AGENCY_CHAT_RULES.format(
+        records="assessment data",
+        bodies="the G-BA, IQWiG, AMNOG price negotiations",
+        economics=("The G-BA rates added clinical benefit against an appropriate comparator "
+                   "therapy; it does not assess cost-effectiveness. Never state an ICER, "
+                   "price, reimbursement amount or percentage that isn't explicitly present "
+                   "in the data below."),
+        example_id="D-1305",
+        prediction="a G-BA resolution or a negotiated price",
+    )
+)
+
+HAS_CHAT_PROMPT = (
+    "You are answering questions about a specific, already-selected set of HAS decisions "
+    "(early access decisions, Transparency Committee opinions with SMR/ASMR ratings and/or "
+    "CEESP efficiency opinions) for a market access consultant. You are NOT a general HAS "
+    "or market-access assistant.\n"
+    + _AGENCY_CHAT_RULES.format(
+        records="decision data",
+        bodies="HAS, the Transparency Committee, the CEESP, CEPS pricing",
+        economics=("Never state an SMR or ASMR level, ICER, price or percentage that isn't "
+                   "explicitly present in the data below. Early access decisions carry no "
+                   "SMR/ASMR rating; don't infer one."),
+        example_id="AP607",
+        prediction="a HAS decision or a negotiated price",
+    )
+)
+
+CROSS_AGENCY_CAVEAT = (
+    "Matched on active substance (including combination regimens), not on indication — "
+    "check the indication before comparing outcomes. The bodies answer different questions: "
+    "NICE weighs cost-effectiveness for the NHS, the G-BA rates added clinical benefit "
+    "against a comparator it sets, and HAS rates clinical benefit (SMR/ASMR) and decides "
+    "early access. A different outcome is expected, not a contradiction."
+)
+
+
+# ── Agency configuration ─────────────────────────────────────────────────────
+
+AGENCY_CONFIG = {
+    "G-BA": {
+        "sheet": "G-BA_Recent",
+        "slug": "gba",
+        "title": "🇩🇪 G-BA Benefit Assessment Intelligence",
+        "noun": "assessments",
+        "noun_title": "Assessments",
+        "detail_title": "📋 Assessment Detail",
+        "search_examples": "'breast', 'myasthenia'",
+        "source_label": "official G-BA resolutions and IQWiG assessments",
+        "log_keyword": "G-BA",
+        "extra_columns": ["comparator_therapy", "added_benefit_assessment", "ICER_EUR_per_QALY"],
+        "comparator_col": "comparator_therapy",
+        "icer_lower_col": "ICER_EUR_per_QALY",
+        "icer_upper_col": None,
+        "outcome_fn": gba_outcome,
+        "favourable_fn": gba_favourable,
+        "derived": {"certainty": gba_certainty},
+        "outcome_order": GBA_OUTCOME_ORDER,
+        "outcome_colors": GBA_COLORS,
+        "outcome_md_colors": GBA_MD_COLORS,
+        "subtitle_fn": gba_subtitle,
+        "headlines_fn": gba_headlines,
+        "show_recorded_decision": True,
+        "table_extra": [("certainty", "Evidence certainty")],
+        "detail_fields": [
+            ("Added benefit (as recorded)", "added_benefit_assessment"),
+            ("Evidence certainty", "certainty"),
+            ("Appropriate comparator therapy (zVT)", "comparator"),
+            ("Patient population", "patient_population"),
+            ("Reasoning", "decision_reasoning"),
+            ("Economic evaluation", "ICER_status"),
+        ],
+        "synthesis_blocks": [
+            {"title": "Appropriate comparator therapy (zVT) set by the G-BA",
+             "cols": ["comparator"], "subset": "all",
+             "caption": "The comparator the G-BA required for each assessment — the input that "
+                        "most shapes a German dossier. Where it differs by subgroup, the "
+                        "resolution lists each subgroup's comparator."},
+            {"title": "Where an added benefit was found",
+             "cols": ["added_benefit_assessment", "decision_reasoning"], "subset": "favourable",
+             "caption": "Positive ratings, including mixed resolutions where at least one "
+                        "subgroup received one.",
+             "empty": "No positive rating in the current selection."},
+            {"title": "Where no added benefit was proven",
+             "cols": ["added_benefit_assessment", "decision_reasoning"], "subset": "unfavourable",
+             "caption": "As recorded in the workbook. For the full rationale, open the G-BA "
+                        "'Reasons for decision' (Tragende Gründe) linked in each assessment's "
+                        "detail.",
+             "empty": "No negative outcome in the current selection."},
+            {"title": "Target population size",
+             "cols": ["patient_population"], "subset": "all",
+             "caption": "Patient numbers as stated in the G-BA resolution."},
+        ],
+        "chat_fields": [
+            ("Assessment type", "assessment_type"),
+            ("Appropriate comparator therapy", "comparator"),
+            ("Added benefit", "added_benefit_assessment"),
+            ("Evidence certainty", "certainty"),
+            ("Patient population", "patient_population"),
+            ("Reasoning", "decision_reasoning"),
+            ("Economic evaluation", "ICER_status"),
+        ],
+        "chat_prompt": GBA_CHAT_PROMPT,
+        "methodology_md": GBA_METHODOLOGY,
+    },
+    "HAS": {
+        "sheet": "HAS_Recent",
+        "slug": "has",
+        "title": "🇫🇷 HAS Appraisal Intelligence",
+        "noun": "decisions",
+        "noun_title": "Decisions",
+        "detail_title": "📋 Decision Detail",
+        "search_examples": "'lymphoma', 'lung'",
+        "source_label": "official HAS decisions and Transparency Committee documents",
+        "log_keyword": "HAS",
+        "extra_columns": ["comparator", "SMR_rating", "ASMR_rating", "ICER_lower_EUR_per_QALY",
+                          "ICER_upper_EUR_per_QALY", "current_status"],
+        "comparator_col": "comparator",
+        "icer_lower_col": "ICER_lower_EUR_per_QALY",
+        "icer_upper_col": "ICER_upper_EUR_per_QALY",
+        "outcome_fn": has_outcome,
+        "favourable_fn": has_favourable,
+        "derived": {
+            "_early_access": has_is_early_access,
+            "_smr": lambda r: smr_level(r.get("SMR_rating")),
+            "_asmr": lambda r: asmr_level(r.get("ASMR_rating")),
+            "_ratings": has_ratings_text,
+        },
+        "outcome_order": HAS_OUTCOME_ORDER,
+        "outcome_colors": HAS_COLORS,
+        "outcome_md_colors": HAS_MD_COLORS,
+        "subtitle_fn": has_subtitle,
+        "headlines_fn": has_headlines,
+        "show_recorded_decision": False,
+        "table_extra": [("SMR_rating", "SMR"), ("ASMR_rating", "ASMR")],
+        "detail_fields": [
+            ("SMR", "SMR_rating"),
+            ("ASMR", "ASMR_rating"),
+            ("Comparator", "comparator"),
+            ("Patient population", "patient_population"),
+            ("Reasoning", "decision_reasoning"),
+            ("Current status", "current_status"),
+            ("Economic evaluation", "ICER_status"),
+        ],
+        "synthesis_blocks": [
+            {"title": "Refusals and insufficient SMR",
+             "cols": ["decision_reasoning"], "subset": "unfavourable",
+             "caption": "Reasons as recorded from the public decision — see the linked HAS "
+                        "documents for the full opinion.",
+             "empty": "No refusal or insufficient SMR in the current selection."},
+            {"title": "Where HAS granted, renewed or rated an improvement",
+             "cols": ["decision_reasoning"], "subset": "favourable",
+             "empty": "No favourable decision in the current selection."},
+            {"title": "Status notes",
+             "cols": ["current_status"], "subset": "all",
+             "caption": "Later changes recorded against each decision — e.g. a product leaving "
+                        "the early-access scheme."},
+            {"title": "Clinical benefit ratings (SMR / ASMR)",
+             "cols": ["_ratings"], "subset": "all",
+             "empty": "None of the selected records carry SMR/ASMR ratings — early-access "
+                      "decisions don't assign them."},
+            {"title": "Comparator", "cols": ["comparator"], "subset": "all"},
+        ],
+        "chat_fields": [
+            ("Assessment type", "assessment_type"),
+            ("SMR", "SMR_rating"),
+            ("ASMR", "ASMR_rating"),
+            ("Comparator", "comparator"),
+            ("Patient population", "patient_population"),
+            ("Reasoning", "decision_reasoning"),
+            ("Current status", "current_status"),
+            ("Economic evaluation", "ICER_status"),
+        ],
+        "chat_prompt": HAS_CHAT_PROMPT,
+        "methodology_md": HAS_METHODOLOGY,
+    },
+}
+
+
+# ── Same-molecule matching across agencies ───────────────────────────────────
+
+_MOLECULE_SEPARATORS = re.compile(
+    r"\s*(?:\bin combination with\b|\bcombined with\b|\bfollowed by\b|\bwith or without\b"
+    r"|\bwithout\b|\bwith\b|\bplus\b|\band\b|\bor\b|\bthen\b|\+|,|;|/|&|–|—|\s-\s)\s*",
+    re.IGNORECASE)
+# Words after which a drug-name part stops naming the drug ('Mepolizumab as an
+# add-on…', 'Exenatide … for injection').
+_DESCRIPTIVE_TAIL = re.compile(r"\b(?:for|as|in|to|after|before|versus|vs)\b")
+_DESCRIPTOR_WORDS = {
+    "monotherapy", "maintenance", "adjuvant", "neoadjuvant", "subcutaneous", "intravenous",
+    "oral", "formulation", "tablet", "tablets", "capsule", "capsules", "injection",
+    "infusion", "suspension", "solution", "prolonged", "immediate", "modified", "extended",
+    "release", "high", "low", "dose", "first", "second", "third", "line", "therapy",
+    "treatment", "regimen", "combination", "alone", "only", "originator", "biosimilar",
+    "biosimilars", "an", "a", "the", "nd", "st", "rd", "th",
+}
+_SALT_WORDS = {
+    "hydrochloride", "dihydrochloride", "mesylate", "mesilate", "maleate", "sodium",
+    "potassium", "citrate", "tartrate", "besylate", "besilate", "fumarate",
+    "hemifumarate", "succinate", "acetate", "phosphate", "sulfate", "sulphate",
+    "bromide", "tosylate", "malate",
+}
+_NON_MOLECULES = {
+    "chemotherapy", "chemoradiotherapy", "radiotherapy", "placebo", "best supportive care",
+    "standard care", "standard of care", "endocrine", "hormone", "surgery", "platinum",
+    "platinum based chemotherapy", "platinum containing chemotherapy", "taxane",
+    "aromatase inhibitor", "sulphonylurea", "sulfonylurea",
+}
+_INDICATION_STOPWORDS = {
+    "adults", "adult", "with", "who", "are", "the", "for", "and", "after", "least", "one",
+    "more", "prior", "treating", "treatment", "treatments", "treated", "therapy",
+    "therapies", "patients", "people", "previously", "disease", "not", "whose", "has",
+    "have", "been", "than", "from", "that", "which", "this", "these", "their", "its", "per",
+    "all", "any", "other", "such", "where", "when", "including", "only", "also", "both",
+    "either", "specified", "used", "use", "had", "aged", "years", "older", "over", "under",
+    "can", "cannot", "unsuitable", "suitable", "eligible", "ineligible", "listed",
+    "standard", "options", "option", "systemic", "line", "lines", "first", "second", "third",
+}
+
+
+def molecule_set(*names):
+    """
+    Active substances named in drug-name strings, as letters-only keys.
+
+    NICE names regimens and formulations in many ways — 'Trastuzumab in
+    combination with paclitaxel', 'Trastuzumab monotherapy', 'Pembrolizumab
+    plus chemotherapy with or without bevacizumab', 'Nivolumab–relatlimab',
+    'High-dose imatinib' — and its generic_name column carries an extraction
+    note in brackets. So names are split on regimen separators, bracketed text
+    and descriptive tails are dropped, formulation words ignored, and each
+    remaining part becomes a letters-only key: 'Lutetium-177 vipivotide
+    tetraxetan' and 'Lutetium (177Lu) vipivotide tetraxetan' give the same key.
+    Matching is on whole keys, so 'trastuzumab' never matches 'trastuzumab
+    deruxtecan'.
+    """
+    keys = set()
+    for name in names:
+        s = _text(name)
+        if not s:
+            continue
+        s = re.sub(r"\([^)]*\)|\([^)]*$", " ", s.lower())
+        for part in _MOLECULE_SEPARATORS.split(s):
+            part = _DESCRIPTIVE_TAIL.split(part, maxsplit=1)[0]
+            words = [w for w in re.findall(r"[a-z]+", part)
+                     if w not in _SALT_WORDS and w not in _DESCRIPTOR_WORDS]
+            key = "".join(words)
+            if len(key) >= 4 and " ".join(words) not in _NON_MOLECULES:
+                keys.add(key)
+    return frozenset(keys)
+
+
+def _indication_tokens(text):
+    s = _text(text)
+    if not s:
+        return set()
+    return {w[:5] for w in re.findall(r"[a-z0-9]+", s.lower())
+            if len(w) >= 3 and w not in _INDICATION_STOPWORDS}
+
+
+def indication_overlap(a, b):
+    """Rough 0–1 overlap of two indication texts — used only to list the closest
+    same-molecule appraisal first, never to include or exclude one."""
+    ta, tb = _indication_tokens(a), _indication_tokens(b)
+    if not ta or not tb:
+        return 0.0
+    return len(ta & tb) / len(ta | tb)
+
+
+# ── Frames ───────────────────────────────────────────────────────────────────
+
+# Columns every agency view reads. Missing ones are added empty, so renaming or
+# dropping a column in the workbook degrades gracefully instead of crashing a
+# view — including the NICE view, which reads these rows for "Also assessed by".
+AGENCY_BASE_COLUMNS = [
+    "appraisal_id", "drug_name", "generic_name", "brand_name", "indication",
+    "therapeutic_area", "decision_raw", "decision_simple", "decision_date",
+    "publication_date", "assessment_type", "patient_population", "decision_reasoning",
+    "ICER_status", "official_source_url", "methodology_note",
+]
+
+
+@st.cache_data
+def prepare_agency_frame(agency, version):
+    """One agency's sheet with the columns every view relies on added:
+    inn, brand, comparator, EUR ICER bounds, decision_dt / year / date_label,
+    outcome, favourable, area_broad, search_blob, _molecules, plus any
+    agency-specific derived fields. The row index is kept as the record key,
+    so two rows sharing an ID (e.g. an initial decision and its renewal) stay
+    two records everywhere."""
+    cfg = AGENCY_CONFIG[agency]
+    raw = load_agency_sheet(cfg["sheet"], version)
+    if raw.empty:
+        return raw
+    frame = raw.copy()
+    frame.columns = [str(c).strip() for c in frame.columns]
+    for col in AGENCY_BASE_COLUMNS + cfg["extra_columns"]:
+        if col not in frame.columns:
+            frame[col] = None
+
+    # Blank IDs get the Excel row number so every record can still be traced.
+    frame["appraisal_id"] = [_text(v) or f"{agency} row {n + 2}"
+                             for n, v in enumerate(frame["appraisal_id"])]
+    frame["assessment_type"] = frame["assessment_type"].map(_text)
+    frame["indication"] = frame["indication"].map(lambda v: _text(v) or "Indication not recorded")
+    frame["inn"] = [
+        _text(g) or (_text(d).title() if _text(d) else "Unknown")
+        for g, d in zip(frame["generic_name"], frame["drug_name"])
+    ]
+    frame["brand"] = [_text(b) or "" for b in frame["brand_name"]]
+    frame["comparator"] = frame[cfg["comparator_col"]]
+    frame["icer_eur_lower"] = pd.to_numeric(frame[cfg["icer_lower_col"]], errors="coerce")
+    frame["icer_eur_upper"] = (pd.to_numeric(frame[cfg["icer_upper_col"]], errors="coerce")
+                               if cfg["icer_upper_col"] else float("nan"))
+
+    decided = _to_datetime(frame["decision_date"])
+    frame["decision_dt"] = decided.fillna(_to_datetime(frame["publication_date"]))
+    frame["year"] = frame["decision_dt"].dt.year
+    frame["date_label"] = frame["decision_dt"].dt.strftime("%d %b %Y").fillna("Date not recorded")
+
+    frame["outcome"] = frame.apply(cfg["outcome_fn"], axis=1)
+    for name, fn in cfg["derived"].items():
+        frame[name] = frame.apply(fn, axis=1)
+    frame["favourable"] = frame.apply(cfg["favourable_fn"], axis=1)
+
+    frame["area_broad"] = [
+        (_text(a) or "Not classified").split(" / ")[0].strip() for a in frame["therapeutic_area"]
+    ]
+    blob_cols = ("appraisal_id", "inn", "brand", "drug_name", "indication", "therapeutic_area")
+    frame["search_blob"] = [
+        " | ".join(_text(v) or "" for v in values).lower()
+        for values in zip(*(frame[c] for c in blob_cols))
+    ]
+    frame["_molecules"] = [
+        molecule_set(g) if _text(g) else molecule_set(d)
+        for g, d in zip(frame["generic_name"], frame["drug_name"])
+    ]
+    return frame
+
+
+@st.cache_data
+def cross_agency_index(version):
+    """Every NICE, G-BA and HAS record in one light frame, carrying the
+    active-substance keys used to line the same molecule up across agencies."""
+    nice = load_data()
+    frames = [pd.DataFrame({
+        "body": "NICE",
+        "appraisal_id": nice["appraisal_id"].astype(str),
+        "drug": nice["drug_name"].astype(str),
+        "indication": nice["indication"],
+        "decision": nice["decision_simple"],
+        "when": nice["year_label"].astype(str),
+        "url": nice["url"],
+        "_molecules": [molecule_set(d, g) for d, g in zip(nice["drug_name"], nice["generic_name"])],
+    })]
+    for agency in AGENCY_CONFIG:
+        f = prepare_agency_frame(agency, version)
+        if f.empty:
+            continue
+        frames.append(pd.DataFrame({
+            "body": agency,
+            "appraisal_id": f["appraisal_id"].astype(str),
+            "drug": [f"{i} ({b})" if b else i for i, b in zip(f["inn"], f["brand"])],
+            "indication": f["indication"],
+            "decision": f["outcome"],
+            "when": f["date_label"],
+            "url": f["official_source_url"],
+            "_molecules": f["_molecules"],
+        }))
+    return pd.concat(frames, ignore_index=True)
+
+
+MATCH_COLUMNS = ["_src", "body", "appraisal_id", "drug", "indication", "decision", "when",
+                 "url", "_body_sort", "_overlap"]
+
+
+@st.cache_data
+def agency_match_table(agency, version):
+    """
+    Every same-molecule match for one agency's rows, as one long table sorted
+    by record, then agency, then closest indication. _src is the record's row
+    index in prepare_agency_frame. Built once through an inverted molecule
+    index and cached — scanning every record against every other on each
+    rerun took seconds once the sheets reach ~1,000 rows.
+    """
+    frame = prepare_agency_frame(agency, version)
+    if frame.empty:
+        return pd.DataFrame(columns=MATCH_COLUMNS)
+    index = cross_agency_index(version)
+    others = index[index["body"] != agency]
+    by_molecule, details = {}, {}
+    for pos, body, aid, drug, ind, decision, when, url, molecules in zip(
+            others.index, others["body"], others["appraisal_id"], others["drug"],
+            others["indication"], others["decision"], others["when"], others["url"],
+            others["_molecules"]):
+        details[pos] = (body, aid, drug, ind, decision, when, url)
+        for key in molecules:
+            by_molecule.setdefault(key, []).append(pos)
+    records = []
+    for src, molecules, indication in zip(frame.index, frame["_molecules"], frame["indication"]):
+        for pos in sorted({p for key in molecules for p in by_molecule.get(key, ())}):
+            body, aid, drug, ind, decision, when, url = details[pos]
+            records.append((src, body, aid, drug, ind, decision, when, url,
+                            AGENCY_SORT.get(body, 9), indication_overlap(indication, ind)))
+    table = pd.DataFrame.from_records(records, columns=MATCH_COLUMNS)
+    return table.sort_values(["_src", "_body_sort", "_overlap"], ascending=[True, True, False],
+                             kind="stable").reset_index(drop=True)
+
+
+def find_same_molecule(index, molecules, exclude_body, ref_indication=None):
+    """Records at other agencies sharing an active substance, closest indication first."""
+    if not molecules:
+        return index.iloc[0:0]
+    hits = index[(index["body"] != exclude_body)
+                 & index["_molecules"].map(lambda m: bool(m & molecules))]
+    if hits.empty:
+        return hits
+    hits = hits.assign(
+        _body_sort=hits["body"].map(AGENCY_SORT),
+        _overlap=hits["indication"].map(lambda t: indication_overlap(ref_indication, t)),
+    )
+    return hits.sort_values(["_body_sort", "_overlap"], ascending=[True, False])
+
+
+def _cross_agency_lines(hits, limit=8):
+    lines = []
+    for _, h in hits.head(limit).iterrows():
+        link = f" · {_md_link('source', h['url'])}" if _text(h["url"]) else ""
+        lines.append(
+            f"- {AGENCY_FLAGS.get(h['body'], '')} **{h['body']} {h['appraisal_id']}** · "
+            f"{_md_safe(h['drug'])} — {h['decision']} ({h['when']}) — "
+            f"_{_md_safe(_shorten(h['indication'], 110))}_{link}")
+    if len(hits) > limit:
+        lines.append(f"- …and {len(hits) - limit} more")
+    return "\n".join(lines)
+
+
+def render_nice_cross_agency(nice_rows):
+    """
+    'Also assessed by' lines for the drug open in the NICE Drug Detail panel,
+    so a NICE-first user sees the G-BA / HAS verdicts on the same molecule
+    without switching views. Guarded: a problem in the G-BA / HAS sheets must
+    never take the NICE view down with it.
+    """
+    if nice_rows.empty:
+        return
+    try:
+        molecules = frozenset().union(*(
+            molecule_set(d, g) for d, g in zip(nice_rows["drug_name"], nice_rows["generic_name"])))
+        hits = find_same_molecule(cross_agency_index(data_version()), molecules, "NICE",
+                                  " ".join(nice_rows["indication"].astype(str)))
+    except Exception:
+        st.caption("Couldn't check the G-BA / HAS sheets for this drug — open those views "
+                   "from the sidebar to see what's wrong.")
+        return
+    if hits.empty:
+        return
+    st.markdown("**Also assessed by other HTA bodies**")
+    st.markdown(_cross_agency_lines(hits))
+    st.caption("Matched on active substance, not indication. Switch HTA body in the sidebar "
+               "for the full record.")
+
+
+def format_eur_icer(row):
+    lo, hi = row.get("icer_eur_lower"), row.get("icer_eur_upper")
+    if lo is None or pd.isna(lo):
+        return None
+    if hi is None or pd.isna(hi) or float(hi) == float(lo):
+        return f"€{float(lo):,.0f}/QALY"
+    return f"€{float(lo):,.0f}–€{float(hi):,.0f}/QALY"
+
+
+def outcome_order(agency, frame):
+    """Outcome categories present in the data, in the agency's scale order."""
+    order = AGENCY_CONFIG[agency]["outcome_order"]
+    present = set(frame["outcome"].dropna())
+    return [o for o in order if o in present] + sorted(present - set(order), key=str.lower)
+
+
+# ── Sidebar ──────────────────────────────────────────────────────────────────
+
+def init_range_state(key, lo, hi):
+    """Default a range slider to its full span, and pull a remembered range back
+    inside the data's bounds (the workbook can change under a live session)."""
+    current = st.session_state.get(key)
+    if not (isinstance(current, (tuple, list)) and len(current) == 2):
+        st.session_state[key] = (lo, hi)
+        return
+    a = max(lo, min(int(current[0]), hi))
+    b = max(lo, min(int(current[1]), hi))
+    if (min(a, b), max(a, b)) != tuple(current):
+        st.session_state[key] = (min(a, b), max(a, b))
+
+
+def render_agency_switcher():
+    counts = {"NICE": TOTAL_ROWS}
+    for agency, cfg in AGENCY_CONFIG.items():
+        counts[agency] = len(load_agency_sheet(cfg["sheet"], data_version()))
+    st.sidebar.title("🌍 HTA body")
+    choice = st.sidebar.radio(
+        "HTA body",
+        list(AGENCY_LABELS),
+        format_func=lambda k: f"{AGENCY_LABELS[k]} · {counts.get(k, 0):,}",
+        key="hta_body",
+        label_visibility="collapsed",
+    )
+    st.sidebar.caption(
+        "NICE weighs cost-effectiveness for the NHS · the G-BA rates added clinical benefit "
+        "against a comparator it sets · HAS rates clinical benefit (SMR/ASMR) and decides "
+        "early access.")
+    st.sidebar.divider()
+    return choice
+
+
+def agency_sidebar_filters(agency, frame):
+    cfg = AGENCY_CONFIG[agency]
+    slug = cfg["slug"]
+    st.sidebar.title("🔍 Filters")
+
+    search = st.sidebar.text_input(
+        "Search",
+        placeholder="Drug, brand, indication or ID",
+        key=f"w_{slug}_search",
+        help="Searches INN, brand name, indication, therapy area and procedure ID. "
+             "Abbreviations such as NSCLC, CRC or UC are expanded to the matching disease term.",
+    )
+    areas = sorted(frame["area_broad"].dropna().unique(), key=str.lower)
+    selected_areas = st.sidebar.multiselect(
+        "Therapy area", areas, key=f"w_{slug}_areas",
+        help="Leave empty to include all areas. Grouped on the first part of the workbook "
+             "label (e.g. 'Oncology / haematology' → Oncology).",
+    )
+    selected_outcomes = st.sidebar.multiselect(
+        "Outcome", outcome_order(agency, frame), key=f"w_{slug}_outcomes",
+        help="Leave empty to include all outcomes.",
+    )
+    types = (sorted({t for t in frame["assessment_type"].map(_text).dropna()}, key=str.lower)
+             if "assessment_type" in frame.columns else [])
+    selected_types = []
+    if len(types) > 1:
+        selected_types = st.sidebar.multiselect(
+            "Assessment type", types, key=f"w_{slug}_types",
+            help="Leave empty to include all procedure types.")
+
+    years = frame["year"].dropna()
+    year_range, full_range = None, None
+    if len(years) and int(years.min()) < int(years.max()):
+        full_range = (int(years.min()), int(years.max()))
+        init_range_state(f"w_{slug}_years", *full_range)
+        year_range = st.sidebar.slider(
+            "Decision year range", min_value=full_range[0], max_value=full_range[1],
+            step=1, key=f"w_{slug}_years",
+            help="Calendar year of the decision (publication date where no decision date "
+                 "is recorded).")
+    elif len(years):
+        st.sidebar.caption(
+            f"All records are dated {int(years.min())}. A year-range filter appears once the "
+            f"data spans more than one year.")
+
+    result = frame
+    if search and search.strip():
+        needle = re.sub(r"\s+", " ", search.strip().lower())
+        resolved, _ = resolve_keyword(search)
+        mask = result["search_blob"].str.contains(needle, regex=False)
+        if resolved and resolved != needle:
+            mask = mask | result["search_blob"].str.contains(resolved, regex=False)
+        result = result[mask]
+    if selected_areas:
+        result = result[result["area_broad"].isin(selected_areas)]
+    if selected_outcomes:
+        result = result[result["outcome"].isin(selected_outcomes)]
+    if selected_types:
+        result = result[result["assessment_type"].isin(selected_types)]
+    if year_range and tuple(year_range) != full_range:
+        result = result[result["year"].between(year_range[0], year_range[1])]
+    return result
+
+
+# ── Record detail & synthesis ────────────────────────────────────────────────
+
+def render_agency_record(agency, row, docs, hits):
+    cfg = AGENCY_CONFIG[agency]
+    color = cfg["outcome_md_colors"].get(row["outcome"], "gray")
+    label = _md_safe(str(row["outcome"]).replace("[", "(").replace("]", ")"))
+    st.markdown(f"**Outcome:** :{color}[**{label}**]")
+    recorded = _text(row.get("decision_simple"))
+    if recorded and recorded != row["outcome"]:
+        st.caption(f"Recorded as: {_md_safe(recorded)}")
+
+    meta = [f"**Decision date:** {row['date_label']}"]
+    published = _text(row.get("publication_date"))
+    if published and published != _text(row.get("decision_date")):
+        meta.append(f"**Published:** {_md_safe(published)}")
+    meta.append(f"**Assessment type:** "
+                f"{_md_safe(_text(row.get('assessment_type')) or 'Not recorded')}")
+    st.markdown(" · ".join(meta))
+
+    for label, col in cfg["detail_fields"]:
+        value = _text(row.get(col))
+        if value:
+            st.markdown(f"**{label}:** {_md_safe(value)}")
+    icer = format_eur_icer(row)
+    if icer:
+        st.markdown(f"**Published ICER:** {icer}")
+    note = _text(row.get("methodology_note"))
+    if note:
+        st.caption(_md_safe(note))
+
+    record_docs = docs[docs["Appraisal_ID"] == str(row["appraisal_id"])]
+    links = [
+        f"- {_md_link(d['Document_Type'], d['Source_URL'])}"
+        + (f" · {d['Date']}" if _text(d["Date"]) else "")
+        for _, d in record_docs.iterrows() if _text(d["Source_URL"])
+    ]
+    if links:
+        st.markdown("**Source documents**")
+        st.markdown("\n".join(links))
+    elif _text(row.get("official_source_url")):
+        st.markdown(_md_link(f"Open the official {agency} decision ↗", row["official_source_url"]))
+
+    if hits is not None and not hits.empty:
+        st.markdown("**Same molecule at other HTA bodies**")
+        st.markdown(_cross_agency_lines(hits))
+
+
+def _block_subset(frame, subset):
+    if subset == "favourable":
+        return frame[frame["favourable"].eq(True)]
+    if subset == "unfavourable":
+        return frame[frame["favourable"].eq(False)]
+    return frame
+
+
+def render_synthesis_block(block, frame):
+    items = []
+    for _, row in _block_subset(frame, block.get("subset", "all")).iterrows():
+        text = next((t for t in (_substantive(row.get(c)) for c in block["cols"]) if t), None)
+        if text:
+            items.append((row, text))
+    if not items:
+        if block.get("empty"):
+            st.markdown(f"**{block['title']}**")
+            st.caption(block["empty"])
+        return
+    with st.expander(f"{block['title']} ({len(items)})", expanded=len(items) <= 5):
+        if block.get("caption"):
+            st.caption(block["caption"])
+        for row, text in items[:SYNTHESIS_MAX_ITEMS]:
+            st.markdown(f"**{row['appraisal_id']} — {row['inn']}** · "
+                        f"_{_md_safe(_shorten(row['indication'], 90))}_\n\n"
+                        f"> {_md_safe(_shorten(text, 450))}")
+        if len(items) > SYNTHESIS_MAX_ITEMS:
+            st.caption(f"Showing the first {SYNTHESIS_MAX_ITEMS} of {len(items)} — narrow the "
+                       f"selection with the sidebar to see the rest.")
+
+
+def render_economic_block(frame):
+    st.markdown("**Economic evaluation**")
+    with_icer = frame[frame["icer_eur_lower"].notna()]
+    if len(with_icer):
+        table = pd.DataFrame({
+            "ID": with_icer["appraisal_id"],
+            "Drug (INN)": with_icer["inn"],
+            "Indication": with_icer["indication"],
+            "ICER (€/QALY)": with_icer.apply(format_eur_icer, axis=1),
+            "Outcome": with_icer["outcome"],
+        })
+        st.dataframe(table, width="stretch", hide_index=True)
+        st.caption("Shown in €/QALY as published — not converted to £ or compared with NICE's "
+                   "threshold. Neither France nor Germany applies an explicit cost-effectiveness "
+                   "threshold.")
+        return
+    statuses = (frame["ICER_status"].map(_text).dropna().value_counts()
+                if "ICER_status" in frame.columns else pd.Series(dtype=int))
+    if len(statuses):
+        st.caption("No ICER in the current selection. Recorded status: " + "; ".join(
+            f"'{s}' ({n})" for s, n in statuses.items()) + ".")
+    else:
+        st.caption("No ICER in the current selection.")
+
+
+def _coverage_line(frame, docs):
+    n = len(frame)
+
+    def count(col):
+        return int(frame[col].map(_substantive).notna().sum()) if col in frame.columns else 0
+
+    with_docs = int(frame["appraisal_id"].astype(str).isin(set(docs["Appraisal_ID"])).sum())
+    return (
+        f"Coverage in this selection — reasoning {count('decision_reasoning')}/{n} · "
+        f"comparator {count('comparator')}/{n} · patient population "
+        f"{count('patient_population')}/{n} · source documents {with_docs}/{n} · "
+        f"published ICER {int(frame['icer_eur_lower'].notna().sum())}/{n}")
+
+
+# ── Charts ───────────────────────────────────────────────────────────────────
+
+def _integer_axis(fig, axis, max_value):
+    """Whole-number ticks — counts of 1–5 otherwise get 0.5 steps."""
+    update = fig.update_yaxes if axis == "y" else fig.update_xaxes
+    update(rangemode="tozero", tickformat=",d", dtick=1 if max_value <= 8 else None)
+
+
+def render_agency_charts(agency, frame, full_frame):
+    cfg = AGENCY_CONFIG[agency]
+    colors = cfg["outcome_colors"]
+    order = outcome_order(agency, full_frame)
+
+    left, right = st.columns(2)
+    with left:
+        st.markdown("**Outcome breakdown**")
+        fig = px.pie(frame, names="outcome", color="outcome", color_discrete_map=colors,
+                     hole=0.4, category_orders={"outcome": order})
+        st.plotly_chart(fig, width="stretch", key=f"{cfg['slug']}_outcome_pie")
+    with right:
+        st.markdown(f"**{cfg['noun_title']} over time**")
+        dated = frame.dropna(subset=["decision_dt"])
+        if dated.empty:
+            st.caption("No decision dates recorded in this selection.")
+        else:
+            by_year = dated["decision_dt"].dt.year.nunique() >= 2
+            periods = dated["decision_dt"].dt.to_period("Y" if by_year else "M")
+            counts = (
+                dated.assign(_period=periods,
+                             period=periods.dt.strftime("%Y" if by_year else "%b %Y"))
+                .groupby(["_period", "period", "outcome"]).size()
+                .reset_index(name="count").sort_values("_period")
+            )
+            fig = px.bar(counts, x="period", y="count", color="outcome",
+                         color_discrete_map=colors,
+                         category_orders={"outcome": order,
+                                          "period": list(dict.fromkeys(counts["period"]))})
+            fig.update_layout(barmode="stack", xaxis_title=None, yaxis_title="Count",
+                              legend_title=None, bargap=0.5)
+            _integer_axis(fig, "y", counts.groupby("period")["count"].sum().max())
+            st.plotly_chart(fig, width="stretch", key=f"{cfg['slug']}_over_time")
+
+    st.markdown("**Outcome by therapy area**")
+    by_area = frame.groupby(["area_broad", "outcome"]).size().reset_index(name="count")
+    fig = px.bar(by_area, x="count", y="area_broad", color="outcome", orientation="h",
+                 color_discrete_map=colors, category_orders={"outcome": order})
+    fig.update_layout(barmode="stack", yaxis={"categoryorder": "total ascending"},
+                      yaxis_title=None, xaxis_title="Count", legend_title=None, bargap=0.45,
+                      height=max(260, 48 * by_area["area_broad"].nunique() + 140))
+    _integer_axis(fig, "x", by_area.groupby("area_broad")["count"].sum().max())
+    st.plotly_chart(fig, width="stretch", key=f"{cfg['slug']}_by_area")
+
+    if agency == "G-BA":
+        rated = frame[frame["certainty"].notna() & frame["favourable"].eq(True)]
+        if len(rated):
+            st.markdown("**Positive ratings by certainty of evidence**")
+            levels = [c for c in ("Proof", "Indication", "Hint") if c in set(rated["certainty"])]
+            table = pd.crosstab(rated["outcome"], rated["certainty"]).reindex(columns=levels)
+            table = table.reindex([o for o in order if o in table.index])
+            st.dataframe(table.rename_axis(index="Outcome", columns=None),
+                         width=150 + 110 * len(levels) + 180)
+            st.caption("For mixed resolutions, certainty refers to the subgroup that received "
+                       "a positive rating.")
+
+    if agency == "HAS":
+        smr = frame[frame["_smr"].notna()]
+        asmr = frame[frame["_asmr"].notna()]
+        if len(smr) or len(asmr):
+            c1, c2 = st.columns(2)
+            with c1:
+                st.markdown("**SMR (actual clinical benefit)**")
+                if len(smr):
+                    counts = smr["_smr"].value_counts().reindex(
+                        [s for s in SMR_ORDER if s in set(smr["_smr"])]
+                        + sorted(set(smr["_smr"]) - set(SMR_ORDER))).reset_index()
+                    counts.columns = ["SMR", "Count"]
+                    fig = px.bar(counts, x="SMR", y="Count", color_discrete_sequence=["#2a78d6"])
+                    _integer_axis(fig, "y", counts["Count"].max())
+                    st.plotly_chart(fig, width="stretch", key="has_smr")
+                else:
+                    st.caption("No SMR ratings in this selection.")
+            with c2:
+                st.markdown("**ASMR (improvement in clinical benefit)**")
+                if len(asmr):
+                    levels = [lv for lv in ("I", "II", "III", "IV", "V") if lv in set(asmr["_asmr"])]
+                    counts = asmr["_asmr"].value_counts().reindex(levels).reset_index()
+                    counts.columns = ["ASMR", "Count"]
+                    counts["ASMR"] = "ASMR " + counts["ASMR"]
+                    fig = px.bar(counts, x="ASMR", y="Count", color="ASMR",
+                                 color_discrete_map=colors)
+                    fig.update_layout(showlegend=False)
+                    _integer_axis(fig, "y", counts["Count"].max())
+                    st.plotly_chart(fig, width="stretch", key="has_asmr")
+                else:
+                    st.caption("No ASMR ratings in this selection.")
+
+
+# ── Grounded chat over the current selection ─────────────────────────────────
+
+def _anthropic_api_key():
+    try:
+        return st.secrets.get("ANTHROPIC_API_KEY")
+    except Exception:
+        # No secrets.toml at all is the normal state before chat is configured.
+        return None
+
+
+def _matches_by_record(matches):
+    """{record row index: its same-molecule matches}, from the long match table."""
+    return {src: group for src, group in matches.groupby("_src", sort=False)}
+
+
+def build_agency_chat_context(agency, frame, matches):
+    """Same shape as the NICE chat context: an outcome mix for pattern
+    questions, then every selected record (up to the cost ceiling), each with
+    the same molecule's decisions at other agencies so cross-country questions
+    can be answered from the data rather than from memory."""
+    cfg = AGENCY_CONFIG[agency]
+    by_record = _matches_by_record(matches)
+    rows = frame.head(CHAT_MAX_CONTEXT_ROWS)
+    field_chars = CHAT_FIELD_CHARS_FULL if len(rows) <= 20 else CHAT_FIELD_CHARS_TIGHT
+    mix = ", ".join(f"{k}: {v}" for k, v in frame["outcome"].value_counts().items())
+    truncated = len(frame) - len(rows)
+    coverage = (f"Selected {agency} records — all {len(rows)}:" if truncated <= 0 else
+                f"Selected {agency} records ({len(rows)} of {len(frame)}; {truncated} omitted "
+                f"for length — say so if a question needs them):")
+
+    blocks = [
+        f"{agency} {cfg['noun']} currently selected: {len(frame)}. Outcome mix: {mix}.",
+        "",
+        coverage,
+    ]
+    for idx, row in rows.iterrows():
+        brand = f" ({row['brand']})" if row["brand"] else ""
+        parts = [f"[{row['appraisal_id']}] {row['inn']}{brand} — {row['indication']} — "
+                 f"Outcome: {row['outcome']} (recorded as: "
+                 f"{_text(row.get('decision_simple')) or 'not recorded'}; decision date "
+                 f"{row['date_label']})"]
+        for label, col in cfg["chat_fields"]:
+            value = _text(row.get(col))
+            if value:
+                parts.append(f"  {label}: {value[:field_chars]}")
+        icer = format_eur_icer(row)
+        if icer:
+            parts.append(f"  Published ICER: {icer}")
+        hits = by_record.get(idx)
+        if hits is not None:
+            for _, h in hits.head(4).iterrows():
+                parts.append(
+                    f"  Same molecule at {h['body']}: [{h['appraisal_id']}] {h['drug']} — "
+                    f"{_shorten(h['indication'], 140)} — {h['decision']} ({h['when']})")
+        blocks.append("\n".join(parts))
+    return "\n\n".join(blocks)
+
+
+def render_agency_chat(agency, frame, matches):
+    cfg = AGENCY_CONFIG[agency]
+    slug = cfg["slug"]
+    st.divider()
+    st.subheader("💬 Ask about this selection")
+
+    api_key = _anthropic_api_key()
+    if not api_key:
+        st.info("Chat isn't configured yet — needs an ANTHROPIC_API_KEY in this app's "
+                "Streamlit secrets.")
+        return
+
+    # The selection IS the grounding data, so a different selection starts a
+    # fresh conversation — the NICE chat resets on a new query for the same reason.
+    history_key, signature_key = f"chat_history_{slug}", f"chat_signature_{slug}"
+    signature = tuple(frame.index)
+    if st.session_state.get(signature_key) != signature:
+        st.session_state[history_key] = []
+        st.session_state[signature_key] = signature
+    history = st.session_state[history_key]
+
+    st.caption(
+        f"Ask about the {len(frame)} {agency} {cfg['noun']} currently selected by the sidebar "
+        f"filters — e.g. \"which comparators came up most?\" or \"how did NICE decide on the "
+        f"same molecules?\". Answers are grounded only in this selection and will say so if "
+        f"something isn't covered, rather than guessing.")
+    turns_used = len(history) // 2
+    st.caption(f"{turns_used}/{CHAT_MAX_TURNS} questions used for this selection.")
+
+    for msg in history:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+
+    if turns_used >= CHAT_MAX_TURNS:
+        st.warning("Question limit reached for this selection. Change the filters to start "
+                   "a new conversation.")
+        return
+
+    question = st.chat_input(f"Ask about these {agency} {cfg['noun']}...",
+                             key=f"chat_input_{slug}")
+    if question:
+        history.append({"role": "user", "content": question})
+        with st.chat_message("user"):
+            st.markdown(question)
+        context = build_agency_chat_context(agency, frame, matches)
+        with st.chat_message("assistant"):
+            with st.spinner(f"Checking the selected {agency} {cfg['noun']}..."):
+                answer, error = ask_chat(api_key, context, history[:-1], question,
+                                         system_prompt=cfg["chat_prompt"])
+            if error:
+                st.error(error)
+                history.pop()  # don't count a failed turn
+            else:
+                st.markdown(answer)
+                history.append({"role": "assistant", "content": answer})
+
+
+# ── The agency page ──────────────────────────────────────────────────────────
+
+def _agency_footer(agency, total):
+    cfg = AGENCY_CONFIG[agency]
+    st.divider()
+    st.caption(
+        f"Built with Python & Streamlit | {total:,} {cfg['noun']} sourced from "
+        f"{cfg['source_label']} | Preliminary intelligence tool — not a substitute for full "
+        f"evidence review or professional market access advice")
+
+
+def _records_matched(matches, body=None):
+    """How many records (rows, not IDs) have at least one match, optionally at one body."""
+    subset = matches if body is None else matches[matches["body"] == body]
+    return int(subset["_src"].nunique())
+
+
+def render_agency_view(agency):
+    cfg = AGENCY_CONFIG[agency]
+    version = data_version()
+    frame = prepare_agency_frame(agency, version)
+
+    st.title(cfg["title"])
+    if frame.empty:
+        st.info(f"No {agency} records in this workbook yet — add rows to the "
+                f"'{cfg['sheet']}' sheet and they'll appear here with no code changes.")
+        return
+
+    doc_index = load_document_index(version)
+    docs = doc_index[doc_index["Institution"] == agency]
+    total = len(frame)
+    all_matches = agency_match_table(agency, version)
+
+    st.markdown(f"*{_md_safe(cfg['subtitle_fn'](frame))} — {_date_span(frame['decision_dt'])}*")
+    if total < SMALL_AGENCY_SET:
+        st.info(f"Small dataset so far — {total} {cfg['noun']}. Counts, charts and patterns "
+                f"below are illustrative until more {agency} decisions are loaded.")
+
+    with st.expander("Scope & methodology — read before comparing with NICE"):
+        st.markdown(cfg["methodology_md"])
+        documented = int(frame["appraisal_id"].astype(str).isin(set(docs["Appraisal_ID"])).sum())
+        st.markdown(
+            f"**Coverage.** {total} {cfg['noun']} dated {_date_span(frame['decision_dt'])} · "
+            f"{len(docs)} official source documents indexed for {documented} of them · the "
+            f"same active substance also appears in the NICE data for "
+            f"{_records_matched(all_matches, 'NICE')} of {total}.")
+        for note in frame["methodology_note"].map(_text).dropna().unique():
+            st.caption(f"Workbook methodology note: {_md_safe(note)}")
+        log = load_enrichment_log()
+        if log is not None and "Area" in log.columns:
+            area = log["Area"].astype(str)
+            rows = log[area.str.contains(cfg["log_keyword"], case=False, regex=False)
+                       | area.str.contains("document index", case=False, regex=False)]
+            if len(rows):
+                st.markdown("**Enrichment log**")
+                st.dataframe(rows.astype(str), width="stretch", hide_index=True)
+
+    st.divider()
+
+    filtered = agency_sidebar_filters(agency, frame)
+    matches = all_matches[all_matches["_src"].isin(filtered.index)]
+
+    # Metrics — one card per outcome on this agency's scale, like the NICE view
+    st.metric(f"Total {cfg['noun_title']}", len(filtered))
+    outcomes = outcome_order(agency, frame)
+    for col, outcome in zip(st.columns(len(outcomes)), outcomes):
+        col.metric(outcome, int((filtered["outcome"] == outcome).sum()))
+    n = len(filtered)
+    headlines = cfg["headlines_fn"](filtered) + [(
+        "Same molecule appraised by NICE", f"{_records_matched(matches, 'NICE')}/{n}",
+        "Selected records whose active substance also appears in the NICE data — see "
+        "'Same molecule at other HTA bodies' below.")]
+    for col, (label, value, help_text) in zip(st.columns(len(headlines)), headlines):
+        col.metric(label, value, help=help_text)
+
+    st.divider()
+
+    export = filtered.drop(columns=[c for c in filtered.columns
+                                    if c.startswith("_") or c == "search_blob"])
+    buffer = io.BytesIO()
+    export.to_excel(buffer, index=False)
+    st.download_button(
+        "📥 Download Filtered Results",
+        data=buffer.getvalue(),
+        file_name=f"{cfg['slug']}_filtered.xlsx",
+        mime=XLSX_MIME,
+        key=f"download_{cfg['slug']}",
+    )
+    st.caption(f"Showing {n:,} of {total:,} {cfg['noun']}")
+
+    if filtered.empty:
+        st.info("No records match the current filters.")
+        _agency_footer(agency, total)
+        return
+
+    # Outcome sits next to the drug: the indication text is long enough to push
+    # anything after it off-screen.
+    table = pd.DataFrame({
+        "ID": filtered["appraisal_id"],
+        "Drug (INN)": filtered["inn"],
+        "Brand": filtered["brand"],
+        "Outcome": filtered["outcome"],
+        "Decision date": filtered["decision_dt"],
+        "Indication": filtered["indication"],
+        "Therapy Area": filtered["therapeutic_area"],
+    })
+    # The recorded wording is always worth seeing next to an 'Unclassified' bucket.
+    if cfg["show_recorded_decision"] or filtered["outcome"].eq("Unclassified").any():
+        table["Decision (as recorded)"] = filtered["decision_simple"]
+    for col, label in cfg["table_extra"]:
+        if filtered[col].map(_substantive).notna().any():
+            table[label] = filtered[col].map(lambda v: _text(v) or "—")
+    table["Source"] = filtered["official_source_url"]
+    st.dataframe(
+        table,
+        column_config={
+            "Decision date": st.column_config.DateColumn("Decision date", format="D MMM YYYY"),
+            "Indication": st.column_config.TextColumn("Indication", width="large"),
+            "Source": st.column_config.LinkColumn("Source", display_text="Open ↗"),
+        },
+        width="stretch", hide_index=True,
+    )
+
+    # Detail
+    by_record = _matches_by_record(matches)
+    st.divider()
+    st.subheader(cfg["detail_title"])
+    labels = pd.Series(
+        [f"{i} ({b})" if b else i for i, b in zip(filtered["inn"], filtered["brand"])],
+        index=filtered.index)
+    options = sorted(labels.unique(), key=str.lower)
+    selected = st.selectbox("Select a drug", options, key=f"select_{cfg['slug']}_drug")
+    chosen = filtered[labels == selected].sort_values("decision_dt", ascending=False)
+    for idx, row in chosen.iterrows():
+        with st.expander(f"{_md_safe(row['appraisal_id'])} — "
+                         f"{_md_safe(_shorten(row['indication'], 110))}",
+                         expanded=len(chosen) == 1):
+            render_agency_record(agency, row, docs, by_record.get(idx))
+
+    # Analysis
+    st.divider()
+    st.subheader("📊 Analysis")
+    render_agency_charts(agency, filtered, frame)
+
+    # Evidence synthesis
+    st.divider()
+    st.subheader("🔎 Evidence Synthesis")
+    st.markdown(f"*What the {n} {cfg['noun']} in the current selection say. Narrow it with "
+                f"the sidebar search (e.g. {cfg['search_examples']}) to synthesise one "
+                f"indication.*")
+    st.caption(_coverage_line(filtered, docs))
+    for block in cfg["synthesis_blocks"]:
+        render_synthesis_block(block, filtered)
+    render_economic_block(filtered)
+
+    # Same molecule across agencies. Widely appraised molecules (pembrolizumab
+    # has dozens of NICE TAs) would swamp the table, so by default each record
+    # shows only its closest-indication matches.
+    st.divider()
+    st.subheader("🌍 Same Molecule at Other HTA Bodies")
+    per_record = 3
+    show_all = False
+    if len(matches) and matches.groupby("_src").size().max() > per_record:
+        show_all = st.checkbox(
+            f"Show every same-molecule match (default: the {per_record} closest indications "
+            f"per record)", key=f"w_{cfg['slug']}_all_matches")
+    shown = matches if show_all else matches.groupby("_src", sort=False).head(per_record)
+    if len(shown):
+        source = filtered.loc[shown["_src"]]
+        comparison = pd.DataFrame({
+            "Molecule": source["inn"].to_numpy(),
+            f"{agency} ID": source["appraisal_id"].to_numpy(),
+            f"{agency} outcome": source["outcome"].to_numpy(),
+            "Other body": [f"{AGENCY_FLAGS.get(b, '')} {b}" for b in shown["body"]],
+            "Other ID": shown["appraisal_id"].to_numpy(),
+            "Other drug / regimen": shown["drug"].to_numpy(),
+            "Other decision": shown["decision"].to_numpy(),
+            "Other indication": shown["indication"].to_numpy(),
+            "When": shown["when"].to_numpy(),
+            "Link": shown["url"].to_numpy(),
+        })
+        st.markdown(f"**{_records_matched(matches)} of {n}** selected {cfg['noun']} have an "
+                    f"appraisal of the same active substance at another HTA body.")
+        st.dataframe(
+            comparison,
+            column_config={"Link": st.column_config.LinkColumn("Link", display_text="Open ↗")},
+            width="stretch", hide_index=True,
+        )
+        st.caption(CROSS_AGENCY_CAVEAT)
+    else:
+        st.info("None of the selected molecules appear at another HTA body in this workbook yet.")
+
+    render_agency_chat(agency, filtered, matches)
+    _agency_footer(agency, total)
+
+
+# ── HTA body switcher ────────────────────────────────────────────────────────
+# Rendered first so it sits at the top of the sidebar. The NICE page below is
+# the original script; the other agencies render their own page and stop the
+# run here, so none of the NICE code executes for them.
+
+HTA_BODY = render_agency_switcher()
+if HTA_BODY != "NICE":
+    render_agency_view(HTA_BODY)
+    st.stop()
+
+
 # Header
 
 st.title("💊 NICE Technology Appraisal Intelligence")
@@ -1153,21 +2857,26 @@ search = st.sidebar.text_input(
     "Search",
     placeholder="Drug, brand, indication or TA ID",
     help="Searches generic name, brand name, indication and appraisal ID.",
+    key="w_nice_search",
 )
 
 therapeutic_areas = sorted(df["therapeutic_area"].dropna().astype(str).unique())
 selected_areas = st.sidebar.multiselect(
     "Therapy / disease area", therapeutic_areas,
     help="Leave empty to include all areas.",
+    key="w_nice_areas",
 )
 
 decisions = sorted(df["decision_simple"].dropna().astype(str).unique(), key=str.lower)
 selected_decisions = st.sidebar.multiselect(
-    "Decision", decisions, help="Leave empty to include all decisions."
+    "Decision", decisions, help="Leave empty to include all decisions.",
+    key="w_nice_decisions",
 )
 
+st.session_state.setdefault("w_nice_hide_replaced", True)
 hide_replaced = st.sidebar.checkbox(
-    "Hide replaced / withdrawn guidance", value=True,
+    "Hide replaced / withdrawn guidance",
+    key="w_nice_hide_replaced",
     help=(
         f"{int((df['guidance_status'] == 'Replaced / withdrawn').sum())} appraisals have an "
         f"explicit replacement or withdrawal note and are hidden by default. "
@@ -1179,9 +2888,10 @@ hide_replaced = st.sidebar.checkbox(
 
 year_min = int(df["year_start"].min())
 year_max = int(df["year_start"].max())
+init_range_state("w_nice_years", year_min, year_max)
 year_range = st.sidebar.slider(
     "Appraisal year range", min_value=year_min, max_value=year_max,
-    value=(year_min, year_max), step=1,
+    step=1, key="w_nice_years",
     help="NICE fiscal years, mapped to their start year (2024/25 shows as 2024).",
 )
 
@@ -1250,6 +2960,7 @@ st.subheader("📋 Drug Detail")
 drug_options = sorted(filtered_df["drug_name"].dropna().unique().tolist())
 if drug_options:
     selected_drug = st.selectbox("Select a drug", drug_options)
+    render_nice_cross_agency(filtered_df[filtered_df["drug_name"] == selected_drug])
     for _, row in filtered_df[filtered_df["drug_name"] == selected_drug].iterrows():
         with st.expander(f"{row['appraisal_id']} - {row['indication']}"):
             c1, c2, c3 = st.columns(3)
@@ -1363,22 +3074,28 @@ with col_a:
     drug_name = st.text_input(
         "Drug Name (optional)", placeholder="e.g. Adagrasib",
         help="Leave blank to search for analogues by indication alone, without a named "
-             "product in mind.")
-    indication = st.text_input("Indication", placeholder="e.g. Advanced NSCLC")
+             "product in mind.",
+        key="w_nice_drug_name")
+    indication = st.text_input("Indication", placeholder="e.g. Advanced NSCLC",
+                               key="w_nice_indication")
+    st.session_state.setdefault("w_nice_icer_provided", True)
     icer_provided = st.checkbox(
-        "I have an ICER estimate", value=True,
+        "I have an ICER estimate",
         help="Uncheck to search precedent first and see the ICER range achieved, "
-             "without committing to a figure upfront.")
+             "without committing to a figure upfront.",
+        key="w_nice_icer_provided")
     if icer_provided:
+        st.session_state.setdefault("w_nice_icer_low", 50000)
+        st.session_state.setdefault("w_nice_icer_high", 0)
         cost_col1, cost_col2 = st.columns(2)
         with cost_col1:
             estimated_cost_low = st.number_input(
                 "Estimated ICER (£/QALY)", min_value=0, max_value=500000,
-                value=50000, step=5000)
+                step=5000, key="w_nice_icer_low")
         with cost_col2:
             estimated_cost_high = st.number_input(
                 "Upper estimate (optional)", min_value=0, max_value=500000,
-                value=0, step=5000,
+                step=5000, key="w_nice_icer_high",
                 help="Leave at 0 for a single figure. Set above the lower estimate to "
                      "submit a range instead of one exact number.")
     else:
@@ -1386,11 +3103,16 @@ with col_a:
         st.caption("No ICER entered — results will show comparable precedent and the "
                    "ICER range they achieved, without a risk-signal comparison.")
 with col_b:
-    end_of_life = st.radio("End of Life Indication?", ["Yes", "No", "Not specified"], index=1)
-    comparator = st.text_input("Main Comparator", placeholder="e.g. Docetaxel")
-    appraisal_type = st.radio("Appraisal Type", ["STA", "MTA", "Not specified"])
+    st.session_state.setdefault("w_nice_eol", "No")
+    end_of_life = st.radio("End of Life Indication?", ["Yes", "No", "Not specified"],
+                           key="w_nice_eol")
+    comparator = st.text_input("Main Comparator", placeholder="e.g. Docetaxel",
+                               key="w_nice_comparator")
+    appraisal_type = st.radio("Appraisal Type", ["STA", "MTA", "Not specified"],
+                              key="w_nice_appraisal_type")
     keyword = st.text_input("Indication keyword for benchmarking",
-                            placeholder="e.g. lung, breast, immunology, diabetes")
+                            placeholder="e.g. lung, breast, immunology, diabetes",
+                            key="w_nice_keyword")
     st.caption("Abbreviations and phrases both work — 'NSCLC', 'Advanced NSCLC' and "
                "'non-small cell lung cancer' all resolve to the same retrieval set. "
                "Leave blank to search using the Indication field above instead.")
@@ -1408,19 +3130,24 @@ with st.expander("Advanced profile (improves similarity matching where tagged da
         line_of_therapy_input = st.selectbox(
             "Line of therapy",
             vocab_options(VOCAB, "line_of_therapy",
-                          ["Not specified", "First line", "Second line", "Third line+"]))
+                          ["Not specified", "First line", "Second line", "Third line+"]),
+            key="w_nice_line_of_therapy")
         mechanism_input = st.selectbox(
             "Mechanism of action",
-            vocab_options(VOCAB, "mechanism_of_action", ["Not specified"]))
+            vocab_options(VOCAB, "mechanism_of_action", ["Not specified"]),
+            key="w_nice_mechanism")
         patient_population_size_input = st.selectbox(
             "Patient population size",
-            vocab_options(VOCAB,"patient_population_size",["Not specified"]))
+            vocab_options(VOCAB,"patient_population_size",["Not specified"]),
+            key="w_nice_population_size")
     with p2:
         biomarker_input = st.selectbox(
-            "Biomarker", vocab_options(VOCAB, "biomarker", ["Not specified"]))
+            "Biomarker", vocab_options(VOCAB, "biomarker", ["Not specified"]),
+            key="w_nice_biomarker")
         comparator_type_input = st.selectbox(
             "Comparator type",
-            vocab_options(VOCAB, "comparator_type", ["Not specified"]))
+            vocab_options(VOCAB, "comparator_type", ["Not specified"]),
+            key="w_nice_comparator_type")
 
 if "hta_query_ran" not in st.session_state:
     st.session_state.hta_query_ran = False
