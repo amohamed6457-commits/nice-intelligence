@@ -42,6 +42,46 @@ from reportlab.platypus import (
 DATA_FILE = "NICE_v14_updated_2026-09-28.xlsx"
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
+
+def data_version():
+    """
+    Cache key for the workbook: its path and last-modified time. Every loader
+    below takes this as an argument, so replacing the workbook — or pointing
+    DATA_FILE at a new one — refreshes every view on the next run instead of
+    serving rows cached from the old file.
+    """
+    try:
+        return (DATA_FILE, os.path.getmtime(DATA_FILE))
+    except OSError:
+        return (DATA_FILE, None)
+
+
+@st.cache_resource
+def _workbook(version):
+    """
+    Open the workbook once per (path, mtime) and hand back the same ExcelFile
+    for every sheet. Each independent pd.read_excel(path, sheet_name=...) call
+    re-parses the *entire* file — harmless at a few hundred rows, but at the
+    full HAS/G-BA catalogue (12k+ and 1k+ rows, a 40k-row document index) six
+    separate full-file parses is where a cold load stops feeling instant.
+    Reading every sheet off one shared handle turns six parses of the whole
+    file into one open plus six cheap per-sheet parses.
+
+    python-calamine (if installed) is roughly an order of magnitude faster
+    at opening a large .xlsx than the default openpyxl engine; if it isn't
+    available, this falls back to the default engine and still gets the
+    single-open benefit.
+    """
+    path = version[0]
+    try:
+        return pd.ExcelFile(path, engine="calamine")
+    except (ImportError, ValueError):
+        return pd.ExcelFile(path)
+
+
+def _read_sheet(version, sheet_name):
+    return _workbook(version).parse(sheet_name)
+
 st.set_page_config(
     page_title="NICE Intelligence Dashboard",
     page_icon="💊",
@@ -64,20 +104,20 @@ for _state_key in [k for k in st.session_state.keys() if str(k).startswith("w_")
 # Data loading
 
 @st.cache_data
-def load_data():
-    return pd.read_excel(DATA_FILE, sheet_name="Sheet1")
+def load_data(version):
+    return _read_sheet(version, "Sheet1")
 
 
 @st.cache_data
-def load_enrichment_log():
+def load_enrichment_log(version):
     try:
-        return pd.read_excel(DATA_FILE, sheet_name="Enrichment_Log")
+        return _read_sheet(version, "Enrichment_Log")
     except Exception:
         return None
 
 
 @st.cache_data
-def load_vocabulary():
+def load_vocabulary(version):
     """
     Build dropdown options from the Tag_Vocabulary sheet.
 
@@ -91,7 +131,7 @@ def load_vocabulary():
     impossible by construction.
     """
     try:
-        vocab = pd.read_excel(DATA_FILE, sheet_name="Tag_Vocabulary")
+        vocab = _read_sheet(version, "Tag_Vocabulary")
     except Exception:
         return {}
 
@@ -111,8 +151,8 @@ def vocab_options(vocab, field, fallback):
     return vocab.get(field, fallback)
 
 
-df = load_data()
-VOCAB = load_vocabulary()
+df = load_data(data_version())
+VOCAB = load_vocabulary(data_version())
 TOTAL_ROWS = len(df)
 
 
@@ -1131,25 +1171,12 @@ DOC_INDEX_COLUMNS = ["Institution", "Appraisal_ID", "Document_Type",
                      "Document_Title", "Date", "Source_URL", "Notes"]
 
 
-def data_version():
-    """
-    Cache key for the workbook: its path and last-modified time. The G-BA / HAS
-    loaders take this as an argument, so replacing the workbook — or pointing
-    DATA_FILE at a new one — refreshes those views on the next run instead of
-    serving rows cached from the old file.
-    """
-    try:
-        return (DATA_FILE, os.path.getmtime(DATA_FILE))
-    except OSError:
-        return (DATA_FILE, None)
-
-
 @st.cache_data
 def load_agency_sheet(sheet_name, version):
     """Raw rows for a non-NICE agency. A missing sheet yields an empty frame, so
     an older workbook still opens — the NICE view never depends on these."""
     try:
-        return pd.read_excel(version[0], sheet_name=sheet_name)
+        return _read_sheet(version, sheet_name)
     except Exception:
         return pd.DataFrame()
 
@@ -1158,7 +1185,7 @@ def load_agency_sheet(sheet_name, version):
 def load_document_index(version):
     """Appraisal_Documents: one row per official source document, all agencies."""
     try:
-        docs = pd.read_excel(version[0], sheet_name="Appraisal_Documents")
+        docs = _read_sheet(version, "Appraisal_Documents")
     except Exception:
         return pd.DataFrame(columns=DOC_INDEX_COLUMNS)
     for col in ("Institution", "Appraisal_ID"):
@@ -1225,11 +1252,22 @@ def _parse_date(value):
     G-BA and HAS dates are European — '03.09.2026' and '03/09/2026' are 3
     September, not 9 March. Real Excel dates pass straight through, and bare
     Excel serial numbers (46268) are converted rather than read as 1970.
+
+    Some cells hold a short history of dates rather than one (e.g. a G-BA
+    procedure's original resolution and a later amendment, joined by blank
+    lines: '2017-03-16\\n\\n2016-09-15'). Handing that whole blob to the
+    parser lets it misread the leftover text as a time/timezone fragment
+    (observed: '2017-03-16 20:16:00-15:00', a tz-aware artifact that then
+    crashes the column cast against its naive neighbours) — so only the
+    first date in the cell is parsed, on the assumption it's the current
+    one. The tz strip below is a second safety net for any other cell that
+    parses to something tz-aware despite that.
     """
     if value is None or (isinstance(value, float) and pd.isna(value)):
         return pd.NaT
     if isinstance(value, (pd.Timestamp, datetime)):
-        return pd.Timestamp(value)
+        result = pd.Timestamp(value)
+        return result.tz_localize(None) if result.tzinfo is not None else result
     if isinstance(value, (int, float)):
         if 20000 <= value <= 80000:
             return pd.Timestamp("1899-12-30") + pd.Timedelta(days=float(value))
@@ -1237,11 +1275,18 @@ def _parse_date(value):
     s = str(value).strip()
     if not s or s.lower() in _PLACEHOLDER_VALUES:
         return pd.NaT
+    first = re.split(r"[\n;]+", s, maxsplit=1)[0].strip()
+    if first:
+        s = first
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         if re.match(r"^\d{4}-\d{1,2}-\d{1,2}(?:[ T]|$)", s):
-            return pd.to_datetime(s[:10], format="%Y-%m-%d", errors="coerce")
-        return pd.to_datetime(s, dayfirst=True, errors="coerce")
+            result = pd.to_datetime(s[:10], format="%Y-%m-%d", errors="coerce")
+        else:
+            result = pd.to_datetime(s, dayfirst=True, errors="coerce")
+    if isinstance(result, pd.Timestamp) and result.tzinfo is not None:
+        result = result.tz_localize(None)
+    return result
 
 
 def _to_datetime(series):
@@ -2017,7 +2062,7 @@ def prepare_agency_frame(agency, version):
 def cross_agency_index(version):
     """Every NICE, G-BA and HAS record in one light frame, carrying the
     active-substance keys used to line the same molecule up across agencies."""
-    nice = load_data()
+    nice = load_data(data_version())
     frames = [pd.DataFrame({
         "body": "NICE",
         "appraisal_id": nice["appraisal_id"].astype(str),
@@ -2307,25 +2352,46 @@ def _block_subset(frame, subset):
 
 
 def render_synthesis_block(block, frame):
-    items = []
-    for _, row in _block_subset(frame, block.get("subset", "all")).iterrows():
-        text = next((t for t in (_substantive(row.get(c)) for c in block["cols"]) if t), None)
-        if text:
-            items.append((row, text))
-    if not items:
+    """
+    First substantive text among block['cols'], per row, for whichever subset
+    of the frame this block covers.
+
+    Row-by-row .iterrows() here used to cost ~1-1.5s per block at the full
+    HAS catalogue (12k+ rows) — negligible at the few hundred rows this was
+    built against, but five such blocks add seconds to every single rerun
+    once the sheet is full-sized. Finding the first non-blank column is a
+    columnwise .map() plus a fill-forward across columns in priority order,
+    which is the same "first truthy in this order" logic without visiting
+    rows in Python; only the rows actually kept (capped at
+    SYNTHESIS_MAX_ITEMS for display) are ever turned into row objects.
+    """
+    subset = _block_subset(frame, block.get("subset", "all"))
+    texts = pd.Series(None, index=subset.index, dtype=object)
+    for c in block["cols"]:
+        if c not in subset.columns:
+            continue
+        col_text = subset[c].map(_substantive)
+        texts = texts.where(texts.notna(), col_text)
+    mask = texts.notna()
+    total = int(mask.sum())
+    if not total:
         if block.get("empty"):
             st.markdown(f"**{block['title']}**")
             st.caption(block["empty"])
         return
-    with st.expander(f"{block['title']} ({len(items)})", expanded=len(items) <= 5):
+    matched = subset.loc[mask]
+    matched_texts = texts.loc[mask]
+    with st.expander(f"{block['title']} ({total})", expanded=total <= 5):
         if block.get("caption"):
             st.caption(block["caption"])
-        for row, text in items[:SYNTHESIS_MAX_ITEMS]:
+        for idx in matched.index[:SYNTHESIS_MAX_ITEMS]:
+            row = matched.loc[idx]
+            text = matched_texts.loc[idx]
             st.markdown(f"**{row['appraisal_id']} — {row['inn']}** · "
                         f"_{_md_safe(_shorten(row['indication'], 90))}_\n\n"
                         f"> {_md_safe(_shorten(text, 450))}")
-        if len(items) > SYNTHESIS_MAX_ITEMS:
-            st.caption(f"Showing the first {SYNTHESIS_MAX_ITEMS} of {len(items)} — narrow the "
+        if total > SYNTHESIS_MAX_ITEMS:
+            st.caption(f"Showing the first {SYNTHESIS_MAX_ITEMS} of {total} — narrow the "
                        f"selection with the sidebar to see the rest.")
 
 
@@ -2597,6 +2663,30 @@ def _records_matched(matches, body=None):
     return int(subset["_src"].nunique())
 
 
+@st.cache_data
+def _agency_export_bytes(agency, version, index_tuple):
+    """
+    The .xlsx download for the current filter selection.
+
+    Writing this with openpyxl takes ~9-10s at the full HAS catalogue (12k+
+    rows, ~40 columns) — fine once, but the call site used to rebuild it on
+    every rerun, including ones that have nothing to do with the filters
+    (opening a detail expander, asking the chat a question, switching to
+    another agency tab and back). Keying the cache on the filtered row
+    index means it's only rebuilt when the actual selection changes, and
+    re-fetching prepare_agency_frame here is cheap — it's already cached by
+    (agency, version) — so this doesn't need the (large, slower-to-hash)
+    filtered frame passed in directly.
+    """
+    frame = prepare_agency_frame(agency, version)
+    subset = frame.loc[list(index_tuple)]
+    export = subset.drop(columns=[c for c in subset.columns
+                                  if c.startswith("_") or c == "search_blob"])
+    buffer = io.BytesIO()
+    export.to_excel(buffer, index=False)
+    return buffer.getvalue()
+
+
 def render_agency_view(agency):
     cfg = AGENCY_CONFIG[agency]
     version = data_version()
@@ -2628,7 +2718,7 @@ def render_agency_view(agency):
             f"{_records_matched(all_matches, 'NICE')} of {total}.")
         for note in frame["methodology_note"].map(_text).dropna().unique():
             st.caption(f"Workbook methodology note: {_md_safe(note)}")
-        log = load_enrichment_log()
+        log = load_enrichment_log(data_version())
         if log is not None and "Area" in log.columns:
             area = log["Area"].astype(str)
             rows = log[area.str.contains(cfg["log_keyword"], case=False, regex=False)
@@ -2657,13 +2747,9 @@ def render_agency_view(agency):
 
     st.divider()
 
-    export = filtered.drop(columns=[c for c in filtered.columns
-                                    if c.startswith("_") or c == "search_blob"])
-    buffer = io.BytesIO()
-    export.to_excel(buffer, index=False)
     st.download_button(
         "📥 Download Filtered Results",
-        data=buffer.getvalue(),
+        data=_agency_export_bytes(agency, version, tuple(filtered.index)),
         file_name=f"{cfg['slug']}_filtered.xlsx",
         mime=XLSX_MIME,
         key=f"download_{cfg['slug']}",
@@ -2839,7 +2925,7 @@ commercial arrangements. Where that applies, the numeric field is deliberately l
 empty and the qualitative position is recorded separately — a NICE threshold is
 never encoded as if it were an observed ICER.
     """)
-    log = load_enrichment_log()
+    log = load_enrichment_log(data_version())
     if log is not None:
         st.markdown("**Enrichment log**")
         # Cast to string: the log mixes counts and words ('Present') in one
