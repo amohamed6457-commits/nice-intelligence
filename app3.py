@@ -14,6 +14,7 @@ dashboard; the G-BA and HAS views are driven by AGENCY_CONFIG, so adding rows
 to their sheets needs no code changes.
 """
 
+import inspect
 import io
 import os
 import re
@@ -1314,36 +1315,47 @@ def _decision_text(row):
 
 # ── G-BA outcome scale ───────────────────────────────────────────────────────
 
+GBA_DEEMED = "Added benefit deemed proven"
+GBA_NOT_EXTRACTED = "Concluded — outcome not extracted"
 GBA_OUTCOME_ORDER = [
     "Major added benefit",
     "Considerable added benefit",
     "Minor added benefit",
     "Non-quantifiable added benefit",
+    GBA_DEEMED,
     "Mixed by subgroup",
     "No added benefit proven",
     "Lesser benefit",
+    "In progress",
+    "Discontinued",
+    "Exempted from assessment",
+    GBA_NOT_EXTRACTED,
     "Unclassified",
 ]
 GBA_POSITIVE = {
     "Major added benefit", "Considerable added benefit",
     "Minor added benefit", "Non-quantifiable added benefit",
 }
-# Positive extents are an ordered scale, so they take one green ramp (dark =
-# major); the rest are distinct hues. Validated for colour-vision separation.
-GBA_COLORS = {
-    "Major added benefit": "#145a32",
-    "Considerable added benefit": "#1e8449",
-    "Minor added benefit": "#52be80",
-    "Non-quantifiable added benefit": "#2e86c1",
-    "Mixed by subgroup": "#f39c12",
-    "No added benefit proven": "#e74c3c",
-    "Lesser benefit": "#922b21",
-    "Unclassified": "#95a5a6",
+# Procedures that haven't produced an extent rating, named for what they are
+# instead of all landing in 'Unclassified'. Keys are the G-BA's own
+# procedure_status wording (Verfahrensstand), lower-cased.
+GBA_STATUS_OUTCOMES = {
+    "verfahren begonnen": "In progress",
+    "beschlussfassung wird vorbereitet": "In progress",
+    "stellungnahmeverfahren eröffnet": "In progress",
+    "verfahrensstart verschoben": "In progress",
+    "verfahren ausgesetzt": "In progress",
+    "verfahren eingestellt": "Discontinued",
+    "wurde freigestellt": "Exempted from assessment",
 }
+GBA_NO_RATING = set(GBA_STATUS_OUTCOMES.values()) | {GBA_NOT_EXTRACTED, "Unclassified"}
+# Reserve antibiotics (§35a(1c) SGB V): the added benefit is deemed proven by law
+# and no extent is rated.
+_GBA_DEEMED_PATTERN = r"gilt als belegt|deemed (?:established|proven)"
 GBA_MD_COLORS = {
     "Major added benefit": "green", "Considerable added benefit": "green",
     "Minor added benefit": "green", "Non-quantifiable added benefit": "blue",
-    "Mixed by subgroup": "orange", "No added benefit proven": "red",
+    GBA_DEEMED: "green", "Mixed by subgroup": "orange", "No added benefit proven": "red",
     "Lesser benefit": "red",
 }
 
@@ -1426,7 +1438,7 @@ def gba_certainty(row):
     so 'indication' in its therapeutic sense elsewhere in the text is never
     taken for the AMNOG certainty level. None where no benefit was found.
     """
-    if row.get("outcome") in ("No added benefit proven", "Unclassified"):
+    if row.get("outcome") in {"No added benefit proven", GBA_DEEMED} | GBA_NO_RATING:
         return None
     rated = GBA_POSITIVE | {"Lesser benefit"}
     decision_clauses = (_clauses(row.get("decision_simple"))
@@ -1476,26 +1488,68 @@ def gba_favourable(row):
     return False if named else None
 
 
+def gba_outcome_with_status(row):
+    """
+    gba_outcome, plus a name for every procedure that has no extent rating.
+
+    On the full catalogue about one assessment in five had no rating, and
+    reading them all as 'Unclassified' made them look like a data problem.
+    Most are simply not rated (yet): the procedure is still running, was
+    discontinued or exempted, or it's a reserve antibiotic whose added
+    benefit is deemed proven by law. What's left is a concluded procedure
+    whose resolution isn't in the extract, and it's labelled as that.
+    """
+    outcome = gba_outcome(row)
+    if outcome != "Unclassified":
+        return outcome
+    text = f"{_decision_text(row)} {_text(row.get('added_benefit_assessment')) or ''}"
+    if re.search(_GBA_DEEMED_PATTERN, text, re.IGNORECASE):
+        return GBA_DEEMED
+    status = (_text(row.get("procedure_status")) or "").lower()
+    if status in GBA_STATUS_OUTCOMES:
+        return GBA_STATUS_OUTCOMES[status]
+    if status == "verfahren abgeschlossen":
+        return GBA_NOT_EXTRACTED
+    return "Unclassified"
+
+
+def gba_favourable_with_status(row):
+    if row.get("outcome") == GBA_DEEMED:
+        return True
+    if row.get("outcome") in GBA_NO_RATING:
+        return None
+    return gba_favourable(row)
+
+
 def gba_subtitle(frame):
     return f"{len(frame):,} AMNOG early benefit assessments (§35a SGB V)"
 
 
 def gba_headlines(frame):
-    n = len(frame)
-    positive = int(frame["favourable"].eq(True).sum())
+    rated = frame[~frame["outcome"].isin(GBA_NO_RATING)]
+    n = len(rated)
+    positive = int(rated["favourable"].eq(True).sum())
+    none_proven = int(rated["favourable"].eq(False).sum())
+    pct = (lambda k: f" ({k / n * 100:.0f}%)" if n else "")
     return [
-        ("Added benefit in ≥1 subgroup",
-         f"{positive}/{n}" + (f" ({positive / n * 100:.0f}%)" if n else ""),
-         "Major, considerable, minor or non-quantifiable added benefit, plus mixed "
-         "resolutions where at least one subgroup received a positive rating. Descriptive "
-         "of this selection only. Not equivalent to NICE's recommendation proportion: a "
-         "medicine without added benefit is still reimbursed in Germany; the rating shapes "
-         "its negotiated price."),
+        ("Added benefit in ≥1 subgroup", f"{positive:,}/{n:,}{pct(positive)}",
+         "Of the assessments with a rating: major, considerable, minor or non-quantifiable "
+         "added benefit, benefit deemed proven, plus mixed resolutions where at least one "
+         "subgroup received a positive rating. Procedures still in progress, discontinued, "
+         "exempted or without an extracted outcome are left out of the count. Not equivalent "
+         "to NICE's recommendation proportion: a medicine without added benefit is still "
+         "reimbursed in Germany; the rating shapes its negotiated price."),
+        ("No added benefit proven", f"{none_proven:,}/{n:,}{pct(none_proven)}",
+         "Of the assessments with a rating: no added benefit proven for any subgroup, or a "
+         "lesser benefit — including mixed resolutions where every subgroup's rating was "
+         "negative. Mixed resolutions naming only a certainty level, not an extent, are in "
+         "neither count."),
     ]
 
 
 # ── HAS outcome scale ────────────────────────────────────────────────────────
 
+HAS_NO_RATING = "No SMR/ASMR recorded"
 HAS_OUTCOME_ORDER = [
     "Early access granted",
     "Early access renewed",
@@ -1505,24 +1559,8 @@ HAS_OUTCOME_ORDER = [
     "SMR sufficient, no ASMR recorded",
     "SMR mixed by population",
     "SMR insufficient",
-    "Unclassified",
+    HAS_NO_RATING,
 ]
-# ASMR I–IV is an ordered scale → one green ramp (dark = major improvement).
-HAS_COLORS = {
-    "Early access granted": "#17a589",
-    "Early access renewed": "#2a78d6",
-    "Early access refused": "#e74c3c",
-    "Early access — other": "#95a5a6",
-    "ASMR I": "#0f3b22",
-    "ASMR II": "#176b3a",
-    "ASMR III": "#239b56",
-    "ASMR IV": "#45c07a",
-    "ASMR V": "#7f8c8d",
-    "SMR sufficient, no ASMR recorded": "#8e44ad",
-    "SMR mixed by population": "#f39c12",
-    "SMR insufficient": "#922b21",
-    "Unclassified": "#bdc3c7",
-}
 HAS_MD_COLORS = {
     "Early access granted": "green", "Early access renewed": "blue",
     "Early access refused": "red", "ASMR I": "green", "ASMR II": "green",
@@ -1606,6 +1644,14 @@ def has_outcome(row):
     return "Unclassified"
 
 
+def has_outcome_labelled(row):
+    """has_outcome, with 'Unclassified' named for what it is on the real
+    catalogue: mostly renewals, label changes and delistings that carry no
+    SMR/ASMR rating in the source metadata."""
+    outcome = has_outcome(row)
+    return HAS_NO_RATING if outcome == "Unclassified" else outcome
+
+
 def has_favourable(row):
     """ASMR V (no improvement) is neutral, not a refusal: the medicine can still
     be reimbursed, it just gains no price premium."""
@@ -1614,6 +1660,10 @@ def has_favourable(row):
                    "ASMR I", "ASMR II", "ASMR III", "ASMR IV"):
         return True
     if outcome in ("Early access refused", "SMR insufficient"):
+        return False
+    # No SMR/ASMR in the metadata, but the opinion itself was against listing.
+    if outcome == HAS_NO_RATING and re.search(
+            r"\bunfavou?rable\b|\bd[ée]favorable\b", _decision_text(row)):
         return False
     return None
 
@@ -1637,21 +1687,776 @@ def has_headlines(frame):
     early = frame[frame["_early_access"]]
     if len(early):
         ok = int(early["outcome"].isin(["Early access granted", "Early access renewed"]).sum())
-        out.append(("Early access granted or renewed", f"{ok}/{len(early)}",
-                    "Early-access decisions in this selection that granted or renewed access."))
+        out.append(("Early access granted", f"{ok:,}/{len(early):,}",
+                    "Early-access decisions in this selection that granted access, including "
+                    "renewals of an earlier authorisation."))
     asmr = frame[frame["_asmr"].notna()]
     if len(asmr):
         ok = int(asmr["_asmr"].isin(["I", "II", "III", "IV"]).sum())
-        out.append(("ASMR I–IV", f"{ok}/{len(asmr)}",
+        out.append(("ASMR I–IV", f"{ok:,}/{len(asmr):,}",
                     "Reimbursement opinions recognising some improvement in clinical benefit "
                     "(ASMR V = none)."))
     smr = frame[frame["_smr"].notna()]
     if len(smr):
         ok = int((smr["_smr"] != "Insufficient").sum())
-        out.append(("Sufficient SMR (≥1 population)", f"{ok}/{len(smr)}",
+        out.append(("Sufficient SMR", f"{ok:,}/{len(smr):,}",
                     "Opinions rating the actual clinical benefit sufficient for reimbursement "
                     "in at least one population."))
     return out
+
+
+# ── Outcome families (charts) ────────────────────────────────────────────────
+# Each agency's full outcome scale has 12–13 classes — past the ~7 at which
+# colour can carry meaning, so the full scale is shown as a table and the
+# charts group it into a few families. Colours are validated for colour-vision
+# separation against Streamlit's own light (#ffffff) and dark (#0e1117)
+# backgrounds, with a separate dark-mode step for each hue; 'no rating' is a
+# recessive grey rather than a hue.
+
+OUTCOME_FAMILIES = {
+    "G-BA": [
+        ("Added benefit", GBA_POSITIVE | {GBA_DEEMED}),
+        ("Mixed by subgroup", {"Mixed by subgroup"}),
+        ("No added benefit", {"No added benefit proven", "Lesser benefit"}),
+    ],
+    "HAS": [
+        ("Improvement (ASMR I–IV)", {"ASMR I", "ASMR II", "ASMR III", "ASMR IV"}),
+        ("No improvement (ASMR V)", {"ASMR V"}),
+        ("SMR only, no ASMR", {"SMR sufficient, no ASMR recorded", "SMR mixed by population"}),
+        ("SMR insufficient", {"SMR insufficient"}),
+        ("Early access", {"Early access granted", "Early access renewed", "Early access refused",
+                          "Early access — other"}),
+    ],
+}
+FAMILY_NO_RATING = {"G-BA": "No rating (yet)", "HAS": "No rating recorded"}
+FAMILY_COLORS = {
+    "light": {
+        "Added benefit": "#008300", "Mixed by subgroup": "#2a78d6", "No added benefit": "#e34948",
+        "Improvement (ASMR I–IV)": "#008300", "No improvement (ASMR V)": "#e87ba4",
+        "SMR only, no ASMR": "#4a3aa7", "SMR insufficient": "#e34948", "Early access": "#2a78d6",
+        "No rating (yet)": "#a8a7a1", "No rating recorded": "#a8a7a1",
+    },
+    "dark": {
+        "Added benefit": "#008300", "Mixed by subgroup": "#3987e5", "No added benefit": "#e66767",
+        "Improvement (ASMR I–IV)": "#008300", "No improvement (ASMR V)": "#d55181",
+        "SMR only, no ASMR": "#9085e9", "SMR insufficient": "#e66767", "Early access": "#3987e5",
+        "No rating (yet)": "#62615c", "No rating recorded": "#62615c",
+    },
+}
+# ASMR I–IV is an ordered scale: one green ramp, strongest step = ASMR I.
+ASMR_RAMP = {"light": ["#0f5a1f", "#1d7a2e", "#2f9a42", "#5cbf6a"],
+             "dark": ["#a3e0ab", "#74cc80", "#4cb45c", "#2f9a42"]}
+SINGLE_SERIES = {"light": "#2a78d6", "dark": "#3987e5"}
+NEUTRAL_GREY = {"light": "#a8a7a1", "dark": "#62615c"}
+
+
+def family_order(agency):
+    return [name for name, _ in OUTCOME_FAMILIES[agency]] + [FAMILY_NO_RATING[agency]]
+
+
+def outcome_family(agency, outcome):
+    for name, members in OUTCOME_FAMILIES[agency]:
+        if outcome in members:
+            return name
+    return FAMILY_NO_RATING[agency]
+
+
+def _theme_mode():
+    """'dark' or 'light' — the viewer's current Streamlit theme."""
+    try:
+        return "dark" if st.context.theme.type == "dark" else "light"
+    except Exception:
+        return "light"
+
+
+# ── Harmonised therapy areas ─────────────────────────────────────────────────
+# One English vocabulary for all three bodies, close to NICE's own, so a
+# checklist tick means the same thing on every page. G-BA files each
+# assessment under a German Therapiegebiet; HAS under one or more French
+# 'System/Specific' pairs, with cancers filed inside their body system (breast
+# cancer under 'Sein') — so any HAS pair naming a cancer is read as Oncology
+# first. HAS rows with no category (mostly pre-2011) fall back to the ATC code.
+
+AREA_ORDER = [
+    "Oncology", "Haematology", "Immunology / Inflammatory", "Infectious disease",
+    "Endocrine / Metabolic", "Neurology", "Mental health", "Cardiovascular", "Respiratory",
+    "Gastroenterology / Hepatology", "Renal / Urology", "Musculoskeletal", "Dermatology",
+    "Ophthalmology", "Reproductive & sexual health", "Pain & inflammation",
+    "Rare / Genetic diseases", "Other", "Not classified",
+]
+_FOLD_TABLE = str.maketrans({
+    "à": "a", "á": "a", "â": "a", "ä": "a", "ã": "a", "å": "a", "ç": "c", "è": "e", "é": "e",
+    "ê": "e", "ë": "e", "ì": "i", "í": "i", "î": "i", "ï": "i", "ñ": "n", "ò": "o", "ó": "o",
+    "ô": "o", "ö": "o", "õ": "o", "ù": "u", "ú": "u", "û": "u", "ü": "u", "ý": "y", "ÿ": "y",
+    "œ": "oe", "æ": "ae", "ß": "ss", "’": "'", "‘": "'", "´": "'", "β": "beta", "–": "-",
+    "—": "-", " ": " ",
+})
+
+
+def _fold(value):
+    """Lower-case, accent-free text, so 'Myélome', 'myelome' and 'MYÉLOME' match."""
+    s = _text(value)
+    return s.lower().translate(_FOLD_TABLE) if s else ""
+
+
+def _fold_series(series, limit=None):
+    s = series.map(_text).fillna("")
+    if limit:
+        s = s.str.slice(0, limit)
+    return s.str.lower().str.translate(_FOLD_TABLE)
+
+
+_GBA_AREA_EN = {
+    "onkologische erkrankungen": "Oncology",
+    "stoffwechselkrankheiten": "Endocrine / Metabolic",
+    "infektionskrankheiten": "Infectious disease",
+    "krankheiten des nervensystems": "Neurology",
+    "krankheiten des blutes und der blutbildenden organe": "Haematology",
+    "hauterkrankungen": "Dermatology",
+    "krankheiten des muskel-skelett-systems": "Musculoskeletal",
+    "krankheiten des atmungssystems": "Respiratory",
+    "krankheiten des verdauungssystems": "Gastroenterology / Hepatology",
+    "herz-kreislauf-erkrankungen": "Cardiovascular",
+    "augenerkrankungen": "Ophthalmology",
+    "krankheiten des urogenitalsystems": "Renal / Urology",
+    "psychische erkrankungen": "Mental health",
+    "koloniestimulierende faktoren": "Haematology",
+    "sonstiges": "Other",
+}
+_HAS_SYSTEM_EN = {
+    "douleur - inflammation": "Pain & inflammation",
+    "peau et tissu conjonctif": "Dermatology",
+    "appareil digestif": "Gastroenterology / Hepatology",
+    "maladies genetiques, rares, congenitales": "Rare / Genetic diseases",
+    "infections": "Infectious disease",
+    "appareil respiratoire": "Respiratory",
+    "sang et lymphe": "Haematology",
+    "metabolisme et systeme endocrinien": "Endocrine / Metabolic",
+    "appareil genital": "Reproductive & sexual health",
+    "grossesse et reproduction": "Reproductive & sexual health",
+    "sein": "Reproductive & sexual health",
+    "appareil locomoteur": "Musculoskeletal",
+    "systeme immunitaire": "Immunology / Inflammatory",
+    "coeur": "Cardiovascular",
+    "vaisseaux sanguins": "Cardiovascular",
+    "oeil": "Ophthalmology",
+    "troubles mentaux et comportementaux": "Mental health",
+    "systeme nerveux": "Neurology",
+    "systeme urinaire": "Renal / Urology",
+    "cancers - divers": "Oncology",
+    "bouche et dents": "Other",
+    "iatrogenie - intoxications": "Other",
+    "orl": "Other",
+    "handicap": "Other",
+}
+# English labels already in the workbook (early tester rows), by first word.
+_ENGLISH_AREA_EN = {
+    "oncology": "Oncology", "cancer": "Oncology", "haematology": "Haematology",
+    "hematology": "Haematology", "immunology": "Immunology / Inflammatory",
+    "infectious": "Infectious disease", "endocrine": "Endocrine / Metabolic",
+    "metabolic": "Endocrine / Metabolic", "neurology": "Neurology", "mental": "Mental health",
+    "cardiovascular": "Cardiovascular", "respiratory": "Respiratory",
+    "gastroenterology": "Gastroenterology / Hepatology", "renal": "Renal / Urology",
+    "musculoskeletal": "Musculoskeletal", "dermatology": "Dermatology",
+    "ophthalmology": "Ophthalmology", "rare": "Rare / Genetic diseases",
+}
+# First matching ATC prefix wins, so the specific groups come before their letter.
+_ATC_AREA_RULES = [
+    ("L01", "Oncology"), ("L02", "Oncology"), ("L03", "Immunology / Inflammatory"),
+    ("L04", "Immunology / Inflammatory"), ("A10", "Endocrine / Metabolic"),
+    ("A11", "Endocrine / Metabolic"), ("A12", "Endocrine / Metabolic"),
+    ("A16", "Rare / Genetic diseases"), ("A", "Gastroenterology / Hepatology"),
+    ("B05", "Other"), ("B", "Haematology"), ("C", "Cardiovascular"), ("D", "Dermatology"),
+    ("G04", "Renal / Urology"), ("G", "Reproductive & sexual health"),
+    ("H", "Endocrine / Metabolic"), ("J", "Infectious disease"), ("P", "Infectious disease"),
+    ("M", "Musculoskeletal"), ("N01", "Pain & inflammation"), ("N02", "Pain & inflammation"),
+    ("N05", "Mental health"), ("N06", "Mental health"), ("N07B", "Mental health"),
+    ("N", "Neurology"), ("R", "Respiratory"), ("S01", "Ophthalmology"), ("S", "Other"),
+    ("V", "Other"),
+]
+_ATC_CODE = re.compile(r"\b([A-Z]\d{2}[A-Z]{0,2}\d{0,2})\b")
+
+
+def _english_area(text):
+    first = re.split(r"[\s/,(]+", _fold(text), maxsplit=1)[0]
+    return _ENGLISH_AREA_EN.get(first)
+
+
+def therapy_areas(agency, raw_area, atc=None):
+    """
+    (primary area, every area) in the shared English vocabulary.
+
+    G-BA: the trailing parenthetical Therapiegebiet — 'Melanom (onkologische
+    Erkrankungen)' → Oncology. HAS: each 'System/Specific' pair, with any pair
+    that names a cancer read as Oncology; Oncology is the primary area whenever
+    it's among them. No category at all → the ATC code, if any.
+    """
+    text = _text(raw_area)
+    areas = []
+    if text and agency == "G-BA":
+        m = re.search(r"\(([^()]+)\)\s*$", text)
+        group = _fold(m.group(1)) if m else _fold(text)
+        area = _GBA_AREA_EN.get(group) or _english_area(text)
+        areas.append(area or "Other")
+    elif text and agency == "HAS":
+        for pair in text.split(";"):
+            folded = _fold(pair).strip()
+            if not folded:
+                continue
+            system = folded.split("/")[0].strip()
+            if "cancer" in folded:
+                area = "Oncology"
+            else:
+                area = _HAS_SYSTEM_EN.get(system) or _english_area(pair) or "Other"
+            if area not in areas:
+                areas.append(area)
+    elif text:
+        areas.append(_english_area(text) or "Other")
+    if not areas and atc:
+        m = _ATC_CODE.search(str(atc).upper())
+        if m:
+            code = m.group(1)
+            areas.append(next((a for p, a in _ATC_AREA_RULES if code.startswith(p)), "Other"))
+    if not areas:
+        return "Not classified", ("Not classified",)
+    primary = "Oncology" if "Oncology" in areas else areas[0]
+    return primary, tuple(areas)
+
+
+# ── Procedure types, condition labels, orphan status ─────────────────────────
+
+def has_procedure_group(value):
+    """HAS records ~720 different free-text procedure names; these are the eight
+    kinds of procedure behind them."""
+    t = _fold(value)
+    if not t:
+        return "Not recorded"
+    if "acces precoce" in t or "early access" in t:
+        return "Early access"
+    if re.search(r"extensions? d.?indications?", t):
+        return "Extension of indication"
+    if "renouvellement" in t[:60]:
+        return "Renewal"
+    if "reevaluation" in t or "nouvel examen" in t or "reexamen" in t:
+        return "Re-evaluation"
+    if "radiation" in t:
+        return "Delisting"
+    if "modification" in t:
+        return "Label or listing change"
+    if "inscription" in t:
+        return "First listing"
+    return "Other"
+
+
+HAS_PROCEDURE_ORDER = ["First listing", "Extension of indication", "Early access",
+                       "Re-evaluation", "Renewal", "Label or listing change", "Delisting",
+                       "Other", "Not recorded"]
+GBA_PROCEDURE_ORDER = ["Benefit assessment", "New indication", "Re-assessment"]
+
+
+def gba_procedure_group(row):
+    t = _fold(row.get("indication"))
+    if re.search(r"neubewertung|erneute (?:nutzen)?bewertung|fristablauf"
+                 r"|neuer wissenschaftlicher erkenntnisse|uberschreitung", t):
+        return "Re-assessment"
+    if "neues anwendungsgebiet" in t:
+        return "New indication"
+    return "Benefit assessment"
+
+
+def condition_label(agency, row):
+    """A short name for the condition, for tables. G-BA: the disease in its
+    therapy-area tag ('Mammakarzinom'); HAS: the condition in the opinion title
+    ('COLUMVI (glofitamab) - Lymphome diffus à grande cellule B'), else the
+    specific part of its category."""
+    if agency == "G-BA":
+        area = _text(row.get("therapeutic_area")) or ""
+        if re.search(r"\([^()]+\)\s*$", area):
+            return re.sub(r"\s*\([^()]*\)\s*$", "", area).strip() or area
+        # No German tag (early English rows): the indication, trimmed.
+        return _shorten(_text(row.get("indication")) or area, 80)
+    title = _text(row.get("source_title")) or ""
+    m = re.search(r"\)\s+-\s+(.+)$", title)
+    if m:
+        return m.group(1).strip()
+    area = _text(row.get("therapeutic_area"))
+    if area:
+        first = area.split(";")[0]
+        return first.split("/")[-1].strip()
+    return ""
+
+
+def orphan_flag(value):
+    tokens = set(re.findall(r"[a-z0-9]+", _fold(value)))
+    if tokens & {"ja", "yes", "1", "true"}:
+        return "Yes"
+    if tokens & {"nein", "no", "0", "false"}:
+        return "No"
+    return None
+
+
+# ── Search: English terms → the German / French the records are written in ───
+# G-BA and HAS describe conditions in German and French, so an English search
+# for 'breast cancer' found 3 of the ~50 G-BA breast-cancer assessments
+# ('Mammakarzinom'). Each entry has triggers (what a user might type — any
+# language, abbreviations included) and the terms searched for in each
+# language. The longest trigger in a query wins and consumes its words, so
+# 'chronic lymphocytic leukaemia' is the CLL entry, not CLL plus every
+# leukaemia, and 'small cell lung cancer' isn't swallowed by 'lung'. Terms
+# are accent-free (_fold) and match at a word start ('myelom' also finds
+# 'Myeloms'); terms of four letters or fewer must be whole words; a term
+# starting 're:' is a regular expression (used to keep 'non-Hodgkin' out of
+# Hodgkin, or pulmonary hypertension out of hypertension). Add rows freely.
+
+CONDITION_TERMS = [
+    # ── Oncology: specific entries before the family they belong to
+    {"label": "Triple-negative breast cancer",
+     "triggers": ["tnbc", "triple negative breast", "triple-negative breast"],
+     "en": ["triple-negative", "triple negative", "tnbc"],
+     "de": ["triple-negativ", "tnbc"], "fr": ["triple negatif", "triple-negatif", "tnbc"]},
+    {"label": "Breast cancer",
+     "triggers": ["breast cancer", "breast carcinoma", "breast", "mbc", "her2-positive breast",
+                  "her2 positive breast", "hr-positive breast"],
+     "en": ["breast cancer", "breast carcinoma"], "de": ["mammakarzinom", "brustkrebs"],
+     "fr": ["cancer du sein", "cancers du sein", "carcinome mammaire", "cancer mammaire"]},
+    {"label": "Non-small cell lung cancer",
+     "triggers": ["nsclc", "non-small cell lung cancer", "non small cell lung cancer",
+                  "non-small-cell lung cancer", "non-small cell", "non small cell"],
+     "en": ["nsclc", "non-small cell lung", "non-small-cell lung", "non small cell lung"],
+     "de": ["nsclc", "nicht-kleinzellig", "nicht kleinzellig"],
+     "fr": ["cbnpc", "non a petites cellules"]},
+    {"label": "Small cell lung cancer",
+     "triggers": ["sclc", "small cell lung cancer", "small-cell lung cancer", "small cell lung"],
+     "en": ["sclc", r"re:(?<!non-)(?<!non )small[- ]cell lung"],
+     "de": ["sclc", r"re:(?<!nicht-)(?<!nicht )kleinzellig"],
+     "fr": ["cbpc", r"re:(?<!non )a petites cellules"]},
+    {"label": "Lung cancer",
+     "triggers": ["lung cancer", "lung carcinoma", "lung tumour", "lung tumor"],
+     "en": ["lung cancer", "lung carcinoma", "nsclc", "sclc"],
+     "de": ["lungenkarzinom", "bronchialkarzinom", "lungenkrebs", "nsclc", "sclc"],
+     "fr": ["cancer bronchique", "cancer du poumon", "cancer pulmonaire", "cbnpc", "cbpc",
+            "cancer de l'appareil respiratoire"]},
+    {"label": "Multiple myeloma", "triggers": ["myeloma", "multiple myeloma", "mm"],
+     "en": ["myeloma"], "de": ["myelom"], "fr": ["myelome"]},
+    {"label": "Melanoma", "triggers": ["melanoma"], "en": ["melanoma"], "de": ["melanom"],
+     "fr": ["melanome"]},
+    {"label": "Prostate cancer",
+     "triggers": ["prostate cancer", "prostate", "mcrpc", "crpc", "mhspc", "nmcrpc"],
+     "en": ["prostate cancer", "prostate carcinoma", "mcrpc", "crpc", "mhspc"],
+     "de": ["prostatakarzinom", "prostatakrebs"],
+     "fr": ["cancer de la prostate", "cancers de la prostate", "adenocarcinome de la prostate",
+            "carcinome de la prostate"]},
+    {"label": "Colorectal cancer",
+     "triggers": ["colorectal", "colorectal cancer", "bowel cancer", "colon cancer",
+                  "rectal cancer", "crc", "mcrc"],
+     "en": ["colorectal", "colon cancer", "rectal cancer", "mcrc"],
+     "de": ["kolorektal", "kolonkarzinom", "rektumkarzinom", "darmkrebs"],
+     "fr": ["colorectal", "cancer du colon", "cancer du rectum"]},
+    {"label": "Renal cell carcinoma",
+     "triggers": ["renal cell", "renal cell carcinoma", "kidney cancer", "rcc"],
+     "en": ["renal cell", "rcc"], "de": ["nierenzellkarzinom"],
+     "fr": ["cancer du rein", "carcinome renal", "carcinome a cellules renales"]},
+    {"label": "Urothelial / bladder cancer",
+     "triggers": ["urothelial", "urothelial carcinoma", "bladder cancer"],
+     "en": ["urothelial", "bladder cancer"],
+     "de": ["urothelkarzinom", "harnblasenkarzinom", "blasenkarzinom"],
+     "fr": ["urothelial", "cancer de la vessie"]},
+    {"label": "Ovarian cancer", "triggers": ["ovarian", "ovarian cancer"],
+     "en": ["ovarian cancer", "ovarian carcinoma"], "de": ["ovarialkarzinom", "eierstockkrebs"],
+     "fr": ["cancer de l'ovaire", "cancers de l'ovaire", "carcinome de l'ovaire",
+            "cancer ovarien", "carcinome ovarien"]},
+    {"label": "Endometrial cancer", "triggers": ["endometrial", "endometrial cancer"],
+     "en": ["endometrial cancer", "endometrial carcinoma"], "de": ["endometriumkarzinom"],
+     "fr": ["cancer de l'endometre", "carcinome de l'endometre"]},
+    {"label": "Cervical cancer", "triggers": ["cervical cancer"], "en": ["cervical cancer"],
+     "de": ["zervixkarzinom"], "fr": ["cancer du col de l'uterus", "col de l'uterus"]},
+    {"label": "Gastric / oesophageal cancer",
+     "triggers": ["gastric", "gastric cancer", "stomach cancer", "gastro-oesophageal",
+                  "gastroesophageal", "gej", "oesophageal", "esophageal", "oesophageal cancer",
+                  "esophageal cancer"],
+     "en": ["gastric cancer", "gastric adenocarcinoma", "stomach cancer", "oesophageal cancer",
+            "esophageal cancer", "gastroesophageal junction", "gastro-oesophageal junction"],
+     "de": ["magenkarzinom", "adenokarzinom des magens", "karzinom des magens",
+            "osophaguskarzinom", "karzinom des osophagus", "plattenepithelkarzinom des osophagus",
+            "gastroosophagealen ubergangs"],
+     "fr": ["cancer de l'estomac", "cancer gastrique", "adenocarcinome gastrique",
+            "cancer de l'oesophage", "carcinome epidermoide de l'oesophage",
+            "jonction oesogastrique", "jonction oeso-gastrique"]},
+    {"label": "Liver cancer (HCC)",
+     "triggers": ["hepatocellular", "hepatocellular carcinoma", "hcc", "liver cancer"],
+     "en": ["hepatocellular", "hcc", "liver cancer"],
+     "de": ["hepatozellular", "leberzellkarzinom"], "fr": ["hepatocellulaire", "chc"]},
+    {"label": "Primary biliary cholangitis",
+     "triggers": ["primary biliary cholangitis", "primary biliary cirrhosis", "pbc"],
+     "en": ["primary biliary cholangitis", "primary biliary cirrhosis", "pbc"],
+     "de": ["primar biliare cholangitis", "primare biliare cholangitis", "pbc"],
+     "fr": ["cholangite biliaire primitive", "cirrhose biliaire primitive", "cbp"]},
+    {"label": "Biliary tract cancer",
+     "triggers": ["biliary", "biliary tract cancer", "biliary cancer", "cholangiocarcinoma",
+                  "bile duct cancer"],
+     "en": ["biliary tract cancer", "biliary cancer", "cholangiocarcinoma", "bile duct cancer"],
+     "de": ["cholangiokarzinom", "gallengangskarzinom", "biliares karzinom",
+            "karzinom der gallenwege", "gallenwegskarzinom"],
+     "fr": ["cancer des voies biliaires", "cancers des voies biliaires", "cholangiocarcinome",
+            "carcinome des voies biliaires"]},
+    {"label": "Pancreatic cancer", "triggers": ["pancreatic", "pancreatic cancer"],
+     "en": ["pancreatic cancer", "pancreatic adenocarcinoma", "pancreatic ductal"],
+     "de": ["pankreaskarzinom", "adenokarzinom des pankreas", "karzinom des pankreas"],
+     "fr": ["cancer du pancreas", "adenocarcinome du pancreas", "adenocarcinome pancreatique",
+            "adenocarcinome canalaire pancreatique"]},
+    {"label": "Head and neck cancer",
+     "triggers": ["head and neck", "head and neck cancer", "hnscc", "scchn"],
+     "en": ["head and neck", "hnscc", "scchn"], "de": ["kopf-hals", "kopf- und hals"],
+     "fr": ["tete et du cou", "voies aerodigestives superieures"]},
+    {"label": "Thyroid cancer", "triggers": ["thyroid cancer"],
+     "en": ["thyroid cancer", "thyroid carcinoma"],
+     "de": ["schilddrusenkarzinom", "schilddrusenneoplasie"],
+     "fr": ["cancer de la thyroide", "carcinome thyroidien", "cancer thyroidien"]},
+    {"label": "Brain tumours",
+     "triggers": ["glioma", "glioblastoma", "brain tumour", "brain tumor"],
+     "en": ["glioma", "glioblastoma", "brain tumour", "brain tumor"],
+     "de": ["gliom", "glioblastom"], "fr": ["gliome", "glioblastome"]},
+    {"label": "Chronic lymphocytic leukaemia",
+     "triggers": ["cll", "chronic lymphocytic", "chronic lymphocytic leukaemia",
+                  "chronic lymphocytic leukemia"],
+     "en": ["chronic lymphocytic", "cll"],
+     "de": ["chronische lymphatische leukamie", "chronisch lymphatische leukamie", "cll"],
+     "fr": ["leucemie lymphoide chronique", "llc"]},
+    {"label": "Acute myeloid leukaemia",
+     "triggers": ["aml", "acute myeloid", "acute myeloid leukaemia", "acute myeloid leukemia"],
+     "en": ["acute myeloid", "aml"],
+     "de": ["akute myeloische leukamie", "leukamie, myeloische, akute", "aml"],
+     "fr": ["leucemie aigue myeloide", "lam"]},
+    {"label": "Chronic myeloid leukaemia",
+     "triggers": ["cml", "chronic myeloid", "chronic myeloid leukaemia",
+                  "chronic myeloid leukemia"],
+     "en": ["chronic myeloid", "cml"], "de": ["chronische myeloische leukamie", "cml"],
+     "fr": ["leucemie myeloide chronique", "lmc"]},
+    {"label": "Acute lymphoblastic leukaemia",
+     "triggers": ["acute lymphoblastic", "acute lymphocytic", "acute lymphoblastic leukaemia",
+                  "acute lymphoblastic leukemia", "b-all", "t-all"],
+     "en": ["acute lymphoblastic", "acute lymphocytic"],
+     "de": ["akute lymphatische leukamie", "akute lymphoblastische leukamie",
+            "lymphatische b-zell-leukamie", "b-zell-vorlaufer"],
+     "fr": ["leucemie aigue lymphoblastique", "lal"]},
+    {"label": "Leukaemia", "triggers": ["leukaemia", "leukemia"],
+     "en": ["leukaemia", "leukemia"], "de": ["leukamie"], "fr": ["leucemie"]},
+    {"label": "Diffuse large B-cell lymphoma",
+     "triggers": ["dlbcl", "diffuse large b", "diffuse large b-cell lymphoma",
+                  "diffuse large b cell lymphoma"],
+     "en": ["diffuse large b", "dlbcl"], "de": ["grosszellig", "dlbcl"],
+     "fr": ["grandes cellules b", "grande cellule b", "ldgcb"]},
+    {"label": "Follicular lymphoma", "triggers": ["follicular", "follicular lymphoma", "fl"],
+     "en": ["follicular lymphoma"], "de": ["follikulares lymphom", "follikulares b-zell"],
+     "fr": ["lymphome folliculaire"]},
+    {"label": "Mantle cell lymphoma",
+     "triggers": ["mantle cell", "mantle cell lymphoma", "mcl"],
+     "en": ["mantle cell"], "de": ["mantelzell"], "fr": ["cellules du manteau"]},
+    {"label": "Non-Hodgkin lymphoma", "triggers": ["non-hodgkin", "non hodgkin", "nhl"],
+     "en": ["non-hodgkin", "non hodgkin"], "de": ["non-hodgkin"],
+     "fr": ["non hodgkinien", "non-hodgkinien", "lnh"]},
+    {"label": "Hodgkin lymphoma",
+     "triggers": ["hodgkin", "hodgkin lymphoma", "hodgkin's lymphoma", "classical hodgkin"],
+     "en": [r"re:(?<!non-)(?<!non )hodgkin"], "de": [r"re:(?<!non-)(?<!non )hodgkin"],
+     "fr": [r"re:(?<!non-)(?<!non )hodgkin"]},
+    {"label": "Lymphoma", "triggers": ["lymphoma"], "en": ["lymphoma"], "de": ["lymphom"],
+     "fr": ["lymphome"]},
+    {"label": "Sarcoma / GIST", "triggers": ["sarcoma", "gist"], "en": ["sarcoma", "gist"],
+     "de": ["sarkom", "stromatumor"], "fr": ["sarcome", "tumeurs stromales"]},
+    {"label": "Solid tumours (tumour-agnostic)",
+     "triggers": ["solid tumour", "solid tumor", "solid tumours", "solid tumors", "ntrk"],
+     "en": ["solid tumour", "solid tumor", "ntrk"], "de": ["solide tumor", "ntrk"],
+     "fr": ["tumeurs solides", "ntrk"]},
+    {"label": "Bone metastases",
+     "triggers": ["bone metastases", "bone metastasis", "skeletal-related"],
+     "en": ["bone metastases", "skeletal-related"],
+     "de": ["knochenmetastasen", "skelettbezogen"], "fr": ["metastases osseuses"]},
+    # ── Metabolic, infectious, neurological, immune and other
+    {"label": "Type 1 diabetes",
+     "triggers": ["type 1 diabetes", "type 1 diabetes mellitus", "t1d", "t1dm"],
+     "en": ["type 1 diabetes"],
+     "de": ["diabetes mellitus typ 1", "typ-1-diabetes", "typ 1 diabetes"],
+     "fr": ["diabete de type 1"]},
+    {"label": "Type 2 diabetes",
+     "triggers": ["type 2 diabetes", "type 2 diabetes mellitus", "t2dm", "t2d"],
+     "en": ["type 2 diabetes"],
+     "de": ["diabetes mellitus typ 2", "typ-2-diabetes", "typ 2 diabetes"],
+     "fr": ["diabete de type 2"]},
+    {"label": "Diabetes", "triggers": ["diabetes"], "en": ["diabetes"], "de": ["diabetes"],
+     "fr": ["diabete"]},
+    {"label": "Obesity", "triggers": ["obesity", "weight management", "overweight"],
+     "en": ["obesity", "weight management"], "de": ["adipositas", "ubergewicht"],
+     "fr": ["obesite", "surpoids"]},
+    {"label": "Cystic fibrosis", "triggers": ["cystic fibrosis", "cf"],
+     "en": ["cystic fibrosis"], "de": ["zystische fibrose", "mukoviszidose"],
+     "fr": ["mucoviscidose"]},
+    {"label": "HIV", "triggers": ["hiv"], "en": ["hiv"], "de": ["hiv"], "fr": ["vih", "hiv"]},
+    {"label": "Hepatitis C", "triggers": ["hepatitis c", "hcv"], "en": ["hepatitis c", "hcv"],
+     "de": ["hepatitis c", "hcv"], "fr": ["hepatite c", "vhc"]},
+    {"label": "Hepatitis B / D",
+     "triggers": ["hepatitis b", "hepatitis d", "hepatitis delta", "hbv", "hdv"],
+     "en": ["hepatitis b", "hepatitis d", "hepatitis delta", "hbv", "hdv"],
+     "de": ["hepatitis b", "hepatitis d", "hepatitis delta"],
+     "fr": ["hepatite b", "hepatite d", "hepatite delta", "vhb"]},
+    {"label": "COVID-19", "triggers": ["covid", "covid-19", "sars-cov-2"],
+     "en": ["covid", "sars-cov-2"], "de": ["covid", "coronavirus"], "fr": ["covid"]},
+    {"label": "RSV", "triggers": ["rsv", "respiratory syncytial"],
+     "en": ["rsv", "respiratory syncytial"], "de": ["rsv", "synzytial"],
+     "fr": ["vrs", "virus respiratoire syncytial"]},
+    {"label": "Bacterial infections",
+     "triggers": ["bacterial infection", "bacterial infections", "antibiotic", "antibiotics",
+                  "pneumonia"],
+     "en": ["bacterial infection", "antibiotic", "pneumonia"],
+     "de": ["bakterielle infektion", "pneumonie", "antibiot"],
+     "fr": ["infection bacterienne", "infections bacteriennes", "antibiot", "pneumonie"]},
+    {"label": "Vaccines",
+     "triggers": ["vaccine", "vaccines", "vaccination", "immunisation", "immunization"],
+     "en": ["vaccine", "vaccination"], "de": ["impfstoff", "impfung", "immunisierung"],
+     "fr": ["vaccin"]},
+    {"label": "Multiple sclerosis",
+     "triggers": ["multiple sclerosis", "relapsing multiple sclerosis", "ms", "rrms"],
+     "en": ["multiple sclerosis", "rrms"], "de": ["multiple sklerose", "multipler sklerose"],
+     "fr": ["sclerose en plaques"]},
+    {"label": "Epilepsy", "triggers": ["epilepsy", "seizure", "seizures", "dravet", "lennox"],
+     "en": ["epilepsy", "seizure", "dravet", "lennox"],
+     "de": ["epilepsie", "anfall", "anfalle", "dravet", "lennox"],
+     "fr": ["epilepsie", "dravet", "lennox"]},
+    {"label": "Migraine", "triggers": ["migraine"], "en": ["migraine"], "de": ["migrane"],
+     "fr": ["migraine"]},
+    {"label": "Alzheimer's / dementia", "triggers": ["alzheimer", "alzheimer's", "dementia"],
+     "en": ["alzheimer", "dementia"], "de": ["alzheimer", "demenz"],
+     "fr": ["alzheimer", "demence"]},
+    {"label": "Parkinson's disease", "triggers": ["parkinson", "parkinson's"],
+     "en": ["parkinson"], "de": ["parkinson"], "fr": ["parkinson"]},
+    {"label": "Spinal muscular atrophy", "triggers": ["spinal muscular atrophy", "sma"],
+     "en": ["spinal muscular atrophy"],
+     "de": ["spinale muskelatrophie", "spinaler muskelatrophie"],
+     "fr": ["amyotrophie spinale"]},
+    {"label": "Duchenne muscular dystrophy", "triggers": ["duchenne", "dmd"],
+     "en": ["duchenne"], "de": ["duchenne"], "fr": ["duchenne"]},
+    {"label": "Myasthenia gravis", "triggers": ["myasthenia", "myasthenia gravis"],
+     "en": ["myasthenia"], "de": ["myasthenia", "myasthenie"], "fr": ["myasthenie"]},
+    {"label": "Depression",
+     "triggers": ["depression", "depressive", "major depressive disorder", "mdd"],
+     "en": ["depression", "depressive"], "de": ["depression", "depressive"],
+     "fr": ["depression", "depressif"]},
+    {"label": "Schizophrenia", "triggers": ["schizophrenia"], "en": ["schizophrenia"],
+     "de": ["schizophrenie"], "fr": ["schizophrenie"]},
+    {"label": "Psoriasis / psoriatic arthritis",
+     "triggers": ["psoriasis", "psoriatic", "psoriatic arthritis", "plaque psoriasis"],
+     "en": ["psoriasis", "psoriatic"], "de": ["psoriasis"],
+     "fr": ["psoriasis", "psoriasique"]},
+    {"label": "Atopic dermatitis", "triggers": ["atopic dermatitis", "eczema"],
+     "en": ["atopic dermatitis", "eczema"],
+     "de": ["atopische dermatitis", "neurodermitis", "ekzem"],
+     "fr": ["dermatite atopique", "eczema"]},
+    {"label": "Rheumatoid arthritis",
+     "triggers": ["rheumatoid", "rheumatoid arthritis", "ra"],
+     "en": ["rheumatoid"], "de": ["rheumatoide arthritis", "rheumatoider arthritis"],
+     "fr": ["polyarthrite rhumatoide"]},
+    {"label": "Axial spondyloarthritis",
+     "triggers": ["ankylosing spondylitis", "axial spondyloarthritis", "axspa"],
+     "en": ["ankylosing spondylitis", "spondyloarthritis", "axspa"],
+     "de": ["spondylitis", "spondyloarthritis"], "fr": ["spondylarthrite", "spondyloarthrite"]},
+    {"label": "Ulcerative colitis", "triggers": ["ulcerative colitis", "uc"],
+     "en": ["ulcerative colitis"], "de": ["colitis ulcerosa"],
+     "fr": ["rectocolite hemorragique", "rch"]},
+    {"label": "Crohn's disease", "triggers": ["crohn", "crohn's", "crohn's disease"],
+     "en": ["crohn"], "de": ["crohn"], "fr": ["crohn"]},
+    {"label": "Inflammatory bowel disease", "triggers": ["ibd", "inflammatory bowel"],
+     "en": ["inflammatory bowel", "ulcerative colitis", "crohn"],
+     "de": ["colitis ulcerosa", "crohn"], "fr": ["rectocolite hemorragique", "crohn"]},
+    {"label": "Asthma", "triggers": ["asthma"], "en": ["asthma"], "de": ["asthma"],
+     "fr": ["asthme"]},
+    {"label": "COPD", "triggers": ["copd"], "en": ["copd"],
+     "de": ["copd", "chronisch obstruktive"],
+     "fr": ["bpco", "bronchopneumopathie chronique", "broncho-pneumopathie chronique"]},
+    {"label": "Idiopathic pulmonary fibrosis",
+     "triggers": ["pulmonary fibrosis", "idiopathic pulmonary fibrosis", "ipf"],
+     "en": ["pulmonary fibrosis"], "de": ["lungenfibrose"], "fr": ["fibrose pulmonaire"]},
+    {"label": "Pulmonary hypertension",
+     "triggers": ["pulmonary hypertension", "pulmonary arterial hypertension", "pah"],
+     "en": ["pulmonary hypertension", "pulmonary arterial hypertension", "pah"],
+     "de": ["pulmonale hypertonie", "pulmonalen hypertonie", "pulmonal arterielle hypertonie",
+            "pulmonal arteriellen hypertonie"],
+     "fr": ["hypertension arterielle pulmonaire", "hypertension pulmonaire", "htap"]},
+    {"label": "Heart failure", "triggers": ["heart failure", "hf", "hfref", "hfpef"],
+     "en": ["heart failure"], "de": ["herzinsuffizienz"], "fr": ["insuffisance cardiaque"]},
+    {"label": "Hypercholesterolaemia",
+     "triggers": ["hypercholesterolaemia", "hypercholesterolemia", "cholesterol",
+                  "dyslipidaemia", "dyslipidemia", "ldl"],
+     "en": ["hypercholesterolaemia", "hypercholesterolemia", "dyslipidaemia", "dyslipidemia"],
+     "de": ["hypercholesterinamie", "dyslipidamie", "cholesterin"],
+     "fr": ["hypercholesterolemie", "dyslipidemie", "cholesterol"]},
+    {"label": "Hypertension",
+     "triggers": ["hypertension", "high blood pressure", "arterial hypertension",
+                  "essential hypertension"],
+     # English puts the qualifier first ('pulmonary hypertension'); French, whose
+     # 'hypertension' this also matches, puts it after ('hypertension oculaire').
+     "en": [r"re:(?<!pulmonary arterial )(?<!pulmonary )(?<!ocular )(?<!portal )"
+            r"(?<!intracranial )hypertension(?! arterielle pulmonaire)(?! pulmonaire)"
+            r"(?! oculaire)(?! intraoculaire)(?! intra-oculaire)(?! portale)"
+            r"(?! intracranienne)(?! arterielle pulmonaire)"],
+     "de": [r"re:(?<!pulmonal )(?<!pulmonale )arterielle hypertonie",
+            "essentielle hypertonie", "bluthochdruck"],
+     "fr": [r"re:hypertension arterielle(?! pulmonaire)", "hta"]},
+    {"label": "Thrombosis / anticoagulation",
+     "triggers": ["thrombosis", "vte", "dvt", "pulmonary embolism", "anticoagulant",
+                  "anticoagulation"],
+     "en": ["thrombosis", "vte", "dvt", "pulmonary embolism", "anticoagula"],
+     "de": ["thrombose", "embolie"], "fr": ["thrombose", "embolie", "mtev"]},
+    {"label": "Atrial fibrillation / stroke", "triggers": ["atrial fibrillation", "af", "stroke"],
+     "en": ["atrial fibrillation", "stroke"], "de": ["vorhofflimmern", "schlaganfall"],
+     "fr": ["fibrillation atriale", "fibrillation auriculaire",
+            "accident vasculaire cerebral", "avc"]},
+    {"label": "Haemophilia", "triggers": ["haemophilia", "hemophilia"],
+     "en": ["haemophilia", "hemophilia"], "de": ["hamophilie"], "fr": ["hemophilie"]},
+    {"label": "Sickle cell / thalassaemia",
+     "triggers": ["sickle cell", "sickle cell disease", "thalassaemia", "thalassemia"],
+     "en": ["sickle cell", "thalassaemia", "thalassemia"],
+     "de": ["sichelzell", "thalassamie"], "fr": ["drepanocytose", "thalassemie"]},
+    {"label": "PNH", "triggers": ["pnh", "paroxysmal nocturnal"],
+     "en": ["pnh", "paroxysmal nocturnal"], "de": ["hamoglobinurie", "pnh"],
+     "fr": ["hemoglobinurie", "hpn"]},
+    {"label": "Amyloidosis", "triggers": ["amyloidosis", "attr"], "en": ["amyloidosis", "attr"],
+     "de": ["amyloidose"], "fr": ["amylose"]},
+    {"label": "Macular degeneration / oedema", "triggers": ["macular", "amd", "dme"],
+     "en": ["macular"], "de": ["makuladegeneration", "makulaodem", "makula"],
+     "fr": ["degenerescence maculaire", "dmla", "oedeme maculaire", "maculaire"]},
+    {"label": "Hereditary angioedema", "triggers": ["angioedema", "hae"],
+     "en": ["angioedema"], "de": ["angioodem"], "fr": ["angioedeme", "angio-oedeme"]},
+    {"label": "Lysosomal storage disorders",
+     "triggers": ["fabry", "pompe", "gaucher", "mucopolysaccharidosis", "mps"],
+     "en": ["fabry", "pompe", "gaucher", "mucopolysaccharidosis"],
+     "de": ["fabry", "pompe", "gaucher", "mukopolysaccharidose", "mucopolysaccharidose"],
+     "fr": ["fabry", "pompe", "gaucher", "mucopolysaccharidose"]},
+    {"label": "Chronic kidney disease",
+     "triggers": ["chronic kidney disease", "ckd", "kidney disease"],
+     "en": ["chronic kidney disease", "ckd"],
+     "de": ["chronische nierenerkrankung", "niereninsuffizienz"],
+     "fr": ["maladie renale chronique", "insuffisance renale"]},
+    {"label": "Osteoporosis", "triggers": ["osteoporosis"], "en": ["osteoporosis"],
+     "de": ["osteoporose"], "fr": ["osteoporose"]},
+    {"label": "Urticaria", "triggers": ["urticaria"], "en": ["urticaria"], "de": ["urtikaria"],
+     "fr": ["urticaire"]},
+    {"label": "Lupus", "triggers": ["lupus", "sle"], "en": ["lupus"], "de": ["lupus"],
+     "fr": ["lupus"]},
+    {"label": "Graft-versus-host disease",
+     "triggers": ["graft-versus-host", "graft versus host", "gvhd"],
+     "en": ["graft-versus-host", "graft versus host", "gvhd"],
+     "de": ["graft-versus-host", "gvhd"],
+     "fr": ["greffon contre l'hote", "maladie du greffon", "gvh"]},
+    {"label": "Transplantation", "triggers": ["transplant", "transplantation"],
+     "en": ["transplant"], "de": ["transplantation"], "fr": ["greffe", "transplantation"]},
+    {"label": "Pain", "triggers": ["pain", "analgesic"], "en": ["pain", "analgesic"],
+     "de": ["schmerz"], "fr": ["douleur", "antalgique"]},
+    {"label": "Neurofibromatosis", "triggers": ["neurofibromatosis", "nf1"],
+     "en": ["neurofibromatosis", "nf1"], "de": ["neurofibromatose"],
+     "fr": ["neurofibromatose"]},
+    {"label": "Glaucoma", "triggers": ["glaucoma"], "en": ["glaucoma"], "de": ["glaukom"],
+     "fr": ["glaucome"]},
+    {"label": "Insomnia / sleep", "triggers": ["insomnia", "sleep disorder", "narcolepsy"],
+     "en": ["insomnia", "sleep disorder", "narcolepsy"],
+     "de": ["schlafstorung", "insomnie", "narkolepsie"],
+     "fr": ["insomnie", "troubles du sommeil", "narcolepsie"]},
+    {"label": "Contraception", "triggers": ["contraception", "contraceptive"],
+     "en": ["contracepti"], "de": ["kontrazeption", "verhutung"],
+     "fr": ["contraception", "contraceptif"]},
+    {"label": "Growth hormone deficiency", "triggers": ["growth hormone"],
+     "en": ["growth hormone"], "de": ["wachstumshormon"], "fr": ["hormone de croissance"]},
+]
+# Qualifiers that narrow an English search but don't name a condition; they
+# can't be matched against German or French text, so they only rank results.
+# Plurals are caught by _is_stopword.
+_QUERY_STOPWORDS = {
+    "and", "or", "the", "for", "with", "without", "in", "of", "to", "a", "an", "adult", "adults",
+    "patient", "patients", "treatment", "therapy", "advanced", "metastatic", "metastasis",
+    "metastases", "locally", "unresectable", "relapsed", "refractory", "first", "second",
+    "third", "line", "chronic", "acute", "severe", "moderate", "disease", "disorder",
+    "syndrome", "cancer", "carcinoma", "tumour", "tumor", "positive", "negative", "mutation",
+    "mutated", "type", "stage", "early", "previously", "untreated", "treated", "children",
+    "child", "paediatric", "pediatric", "infection", "deficiency", "condition", "primary",
+    "secondary", "maintenance", "adjuvant", "neoadjuvant", "combination", "monotherapy",
+}
+
+
+def _is_stopword(word):
+    return (word in _QUERY_STOPWORDS
+            or (word.endswith("s") and word[:-1] in _QUERY_STOPWORDS)
+            or (word.endswith("es") and word[:-2] in _QUERY_STOPWORDS))
+
+
+def _term_body(term):
+    """A term that must start a word; very short ones (abbreviations) must also
+    end it. 're:' terms are regular expressions, used as written."""
+    if term.startswith("re:"):
+        return term[3:]
+    return re.escape(term) + (r"(?![a-z0-9])" if len(term) <= 4 else "")
+
+
+def _term_pattern(term):
+    return rf"(?<![a-z0-9]){_term_body(term)}"
+
+
+def _any_term_regex(terms):
+    """One pattern for all terms, with the shared word-start check hoisted out of
+    the alternation — several times faster over 12k HAS records than repeating
+    it per term."""
+    if not terms:
+        return None
+    ordered = sorted(set(terms), key=len, reverse=True)
+    return r"(?<![a-z0-9])(?:" + "|".join(_term_body(t) for t in ordered) + ")"
+
+
+_ALL_ENTRY = next(e for e in CONDITION_TERMS if e["label"] == "Acute lymphoblastic leukaemia")
+
+
+def expand_condition_query(agency, query):
+    """
+    ([term groups], [condition labels], [ranking words]) for a condition search.
+
+    Each recognised condition is one group of terms (any one matches), and a
+    record must match every group — 'HIV hepatitis' means both. Qualifiers and
+    words the dictionary doesn't know only rank, since English words can't be
+    expected in German or French text. When nothing is recognised, each
+    distinctive word must match, cut to a stem so English Latin roots still
+    meet their German and French cousins: 'myelodysplastic' → 'myelodyspla'
+    finds 'myelodysplastische' and 'myélodysplasiques'. Abbreviations that are
+    ambiguous in running text (UC, RA, MS, MM, …) are listed as triggers only,
+    never as search terms.
+    """
+    raw = _text(query) or ""
+    q = re.sub(r"\s+", " ", _fold(raw)).strip()
+    if not q:
+        return [], [], []
+    lang = "de" if agency == "G-BA" else "fr"
+    remaining = f" {q} "
+    groups, labels = [], []
+
+    def take(entry):
+        if entry["label"] not in labels:
+            labels.append(entry["label"])
+            groups.append([t for t in dict.fromkeys(entry["en"] + entry[lang])])
+
+    # 'ALL' in capitals is acute lymphoblastic leukaemia; 'all' is just a word.
+    if re.search(r"(?<![A-Za-z])ALL(?![A-Za-z])", raw):
+        take(_ALL_ENTRY)
+        remaining = re.sub(r"(?<![a-z0-9])all(?![a-z0-9])", " ", remaining)
+    triggers = sorted(((trigger, entry) for entry in CONDITION_TERMS
+                       for trigger in entry["triggers"] + entry["en"] + entry["de"] + entry["fr"]
+                       if not trigger.startswith("re:")),
+                      key=lambda pair: -len(pair[0]))
+    for trigger, entry in triggers:
+        pattern = rf"(?<![a-z0-9]){re.escape(trigger)}(?![a-z0-9])"
+        if re.search(pattern, remaining):
+            remaining = re.sub(pattern, " ", remaining)
+            take(entry)
+    words = [w for w in re.findall(r"[a-z0-9][a-z0-9'-]*", remaining) if len(w) >= 2]
+    distinct = [w if len(w) <= 5 else w[:max(6, len(w) - 4)] for w in words
+                if not _is_stopword(w)]
+    if groups:
+        return groups, labels, distinct
+    return [[w] for w in distinct], labels, []
 
 
 # ── Methodology text & chat prompts ──────────────────────────────────────────
@@ -1668,7 +2473,16 @@ minor, non-quantifiable, no added benefit proven, or lesser benefit. Each positi
 carries a certainty of evidence (proof, indication or hint), and resolutions are often
 split by patient subgroup. The *Outcome* column maps each resolution onto that scale,
 using *Mixed by subgroup* where subgroups differ. The wording recorded in the workbook is
-always shown alongside it.
+always shown alongside it. Procedures without an extent rating are named for why:
+*In progress*, *Discontinued*, *Exempted from assessment*, *Added benefit deemed proven*
+(reserve antibiotics under §35a(1c) SGB V, where no extent is rated) or *Concluded —
+outcome not extracted* (a finished procedure whose resolution isn't in this extract).
+Headline percentages count only assessments with a rating.
+
+**Therapy areas and search.** Therapy areas use one English vocabulary for NICE, the G-BA
+and HAS, mapped from the G-BA's own therapy-area tag. The resolutions describe conditions
+in German, so English searches are translated (breast cancer → Mammakarzinom, myeloma →
+Myelom); German terms work as typed.
 
 **What doesn't carry over from the NICE view.** There is no ICER, willingness-to-pay
 threshold or threshold-based risk signal here, because the G-BA doesn't assess
@@ -1691,7 +2505,15 @@ disabling diseases that have no appropriate treatment.
 **How outcomes are shown.** Early-access decisions appear as granted, renewed or refused,
 and reimbursement opinions by ASMR level (or *SMR insufficient*). Early-access decisions
 carry no SMR/ASMR rating or ICER, so those fields read "Not assessed" rather than being
-inferred.
+inferred. Opinions with no SMR or ASMR in the source metadata — mostly renewals, label
+changes and delistings — show as *No SMR/ASMR recorded*.
+
+**Therapy areas and search.** Therapy areas use one English vocabulary for NICE, the G-BA
+and HAS, mapped from HAS's own categories. HAS files cancers under their body system (breast
+cancer under *Sein*), so any category naming a cancer counts as Oncology; where HAS gives no
+category (mostly opinions before 2011) the area comes from the ATC code. The opinions are
+in French, so English searches are translated (myeloma → myélome, breast cancer → cancer du
+sein); French terms work as typed.
 
 **What doesn't carry over from the NICE view.** France has no explicit cost-effectiveness
 threshold, so there's no threshold-based risk signal. Where a CEESP ICER exists it's
@@ -1766,18 +2588,21 @@ AGENCY_CONFIG = {
         "noun": "assessments",
         "noun_title": "Assessments",
         "detail_title": "📋 Assessment Detail",
-        "search_examples": "'breast', 'myasthenia'",
+        "search_examples": "'breast cancer', 'NSCLC', 'Mammakarzinom'",
+        "language": "German",
+        "condition_placeholder": "e.g. breast cancer, NSCLC, myeloma, Mammakarzinom",
+        "procedure_order": GBA_PROCEDURE_ORDER,
         "source_label": "official G-BA resolutions and IQWiG assessments",
         "log_keyword": "G-BA",
-        "extra_columns": ["comparator_therapy", "added_benefit_assessment", "ICER_EUR_per_QALY"],
+        "extra_columns": ["comparator_therapy", "added_benefit_assessment", "ICER_EUR_per_QALY",
+                          "procedure_status", "orphan_status"],
         "comparator_col": "comparator_therapy",
         "icer_lower_col": "ICER_EUR_per_QALY",
         "icer_upper_col": None,
-        "outcome_fn": gba_outcome,
-        "favourable_fn": gba_favourable,
+        "outcome_fn": gba_outcome_with_status,
+        "favourable_fn": gba_favourable_with_status,
         "derived": {"certainty": gba_certainty},
         "outcome_order": GBA_OUTCOME_ORDER,
-        "outcome_colors": GBA_COLORS,
         "outcome_md_colors": GBA_MD_COLORS,
         "subtitle_fn": gba_subtitle,
         "headlines_fn": gba_headlines,
@@ -1831,15 +2656,19 @@ AGENCY_CONFIG = {
         "noun": "decisions",
         "noun_title": "Decisions",
         "detail_title": "📋 Decision Detail",
-        "search_examples": "'lymphoma', 'lung'",
+        "search_examples": "'myeloma', 'lymphoma', 'cancer du sein'",
+        "language": "French",
+        "condition_placeholder": "e.g. myeloma, lung cancer, psoriasis, cancer du sein",
+        "procedure_order": HAS_PROCEDURE_ORDER,
         "source_label": "official HAS decisions and Transparency Committee documents",
         "log_keyword": "HAS",
         "extra_columns": ["comparator", "SMR_rating", "ASMR_rating", "ICER_lower_EUR_per_QALY",
-                          "ICER_upper_EUR_per_QALY", "current_status"],
+                          "ICER_upper_EUR_per_QALY", "current_status", "source_title",
+                          "ATC_codes"],
         "comparator_col": "comparator",
         "icer_lower_col": "ICER_lower_EUR_per_QALY",
         "icer_upper_col": "ICER_upper_EUR_per_QALY",
-        "outcome_fn": has_outcome,
+        "outcome_fn": has_outcome_labelled,
         "favourable_fn": has_favourable,
         "derived": {
             "_early_access": has_is_early_access,
@@ -1848,7 +2677,6 @@ AGENCY_CONFIG = {
             "_ratings": has_ratings_text,
         },
         "outcome_order": HAS_OUTCOME_ORDER,
-        "outcome_colors": HAS_COLORS,
         "outcome_md_colors": HAS_MD_COLORS,
         "subtitle_fn": has_subtitle,
         "headlines_fn": has_headlines,
@@ -1956,18 +2784,28 @@ def molecule_set(*names):
     """
     keys = set()
     for name in names:
-        s = _text(name)
+        # Long dashes join regimens ('Nivolumab–relatlimab'); read them as
+        # separators before folding turns them into plain hyphens.
+        s = _fold((_text(name) or "").replace("–", ";").replace("—", ";"))
         if not s:
             continue
-        s = re.sub(r"\([^)]*\)|\([^)]*$", " ", s.lower())
+        # Accents folded first ('lénalidomide' was read as 'l' + 'nalidomide'),
+        # and a line break separates substances like any other separator.
+        s = re.sub(r"\([^)]*\)|\([^)]*$", " ", s).replace("\n", ";").replace("\r", ";")
         for part in _MOLECULE_SEPARATORS.split(s):
             part = _DESCRIPTIVE_TAIL.split(part, maxsplit=1)[0]
             words = [w for w in re.findall(r"[a-z]+", part)
                      if w not in _SALT_WORDS and w not in _DESCRIPTOR_WORDS]
             key = "".join(words)
             if len(key) >= 4 and " ".join(words) not in _NON_MOLECULES:
-                keys.add(key)
+                keys.add(_inn_stem(key))
     return frozenset(keys)
+
+
+def _inn_stem(key):
+    """German and French INNs differ from English by a final 'e' — Enzalutamid /
+    enzalutamide, céfazoline / cefazolin — so keys drop it for matching."""
+    return key[:-1] if len(key) > 5 and key.endswith("e") else key
 
 
 def _indication_tokens(text):
@@ -2000,50 +2838,30 @@ AGENCY_BASE_COLUMNS = [
 ]
 
 
-_GBA_AREA_SUFFIX = re.compile(r"\(([^()]+)\)\s*$")
+_PRODUCTION_NOTE = re.compile(
+    r"\s*\(\([^()]*\)\)|\s*\((?:mammif|humain|bact[eé]r|levure|v[eé]g[eé]tal|origine)[^()]*\)",
+    re.IGNORECASE)
 
 
-def _broad_area(agency, raw):
-    """
-    Bucket a raw therapeutic_area value into something a sidebar checklist
-    and a bar chart can actually show.
-
-    NICE's therapeutic_area is already a curated ~17-value vocabulary. G-BA
-    and HAS values are far more granular free text — 465 and 1,072 distinct
-    strings respectively across the full catalogue, which is closer to one
-    per specific indication than per broad area. Left as the raw text, both
-    the "Therapy area" sidebar filter and the "Outcome by therapy area"
-    chart tried to show hundreds of one-row entries — an unreadable,
-    multi-thousand-pixel-tall chart and an unusable checklist.
-
-    Both sources do encode a real broad category, just differently. G-BA
-    appends it as a trailing parenthetical: 'Melanom (onkologische
-    Erkrankungen)' -> 'onkologische Erkrankungen'. HAS lists one or more
-    'System/Specific' pairs separated by ';' for multi-system indications:
-    'Système nerveux/Maladies neurodégénératives; Vaisseaux sanguins/...'
-    -> the first pair's system, 'Système nerveux'. Extracting that collapses
-    G-BA to 20 buckets and HAS to 26 on the real catalogue — a handful of
-    legacy rows that use neither convention (e.g. a bare 'Oncology') just
-    fall back to their own text unchanged, same as before.
-    """
-    text = _text(raw) or "Not classified"
-    if agency == "G-BA":
-        m = _GBA_AREA_SUFFIX.search(text)
-        return m.group(1).strip() if m else text
-    if agency == "HAS":
-        first_system = text.split(";")[0].strip()
-        return first_system.split("/")[0].strip()
-    return text.split(" / ")[0].strip()
+def _clean_inn(name):
+    """HAS INNs can carry the production system in brackets — 'isatuximab
+    ((MAMMIFERE/HAMSTER/CELLULES CHO))' — which is noise in a table."""
+    if not name:
+        return name
+    return _PRODUCTION_NOTE.sub("", name).strip() or name
 
 
 @st.cache_data
 def prepare_agency_frame(agency, version):
     """One agency's sheet with the columns every view relies on added:
     inn, brand, comparator, EUR ICER bounds, decision_dt / year / date_label,
-    outcome, favourable, area_broad, search_blob, _molecules, plus any
-    agency-specific derived fields. The row index is kept as the record key,
-    so two rows sharing an ID (e.g. an initial decision and its renewal) stay
-    two records everywhere."""
+    outcome, outcome_family, favourable, therapy_area_en (+ _areas, every
+    area), procedure_type, condition, orphan, _molecules, and accent-folded
+    search text (_primary_text: names, condition, indication, category;
+    _secondary_text: decision wording and the start of the reasoning), plus
+    any agency-specific derived fields. The row index is kept as the record
+    key, so two rows sharing an ID (e.g. an initial decision and its renewal)
+    stay two records everywhere."""
     cfg = AGENCY_CONFIG[agency]
     raw = load_agency_sheet(cfg["sheet"], version)
     if raw.empty:
@@ -2060,7 +2878,7 @@ def prepare_agency_frame(agency, version):
     frame["assessment_type"] = frame["assessment_type"].map(_text)
     frame["indication"] = frame["indication"].map(lambda v: _text(v) or "Indication not recorded")
     frame["inn"] = [
-        _text(g) or (_text(d).title() if _text(d) else "Unknown")
+        _clean_inn(_text(g)) or (_text(d).title() if _text(d) else "Unknown")
         for g, d in zip(frame["generic_name"], frame["drug_name"])
     ]
     frame["brand"] = [_text(b) or "" for b in frame["brand_name"]]
@@ -2074,17 +2892,54 @@ def prepare_agency_frame(agency, version):
     frame["year"] = frame["decision_dt"].dt.year
     frame["date_label"] = frame["decision_dt"].dt.strftime("%d %b %Y").fillna("Date not recorded")
 
-    frame["outcome"] = frame.apply(cfg["outcome_fn"], axis=1)
-    for name, fn in cfg["derived"].items():
-        frame[name] = frame.apply(fn, axis=1)
-    frame["favourable"] = frame.apply(cfg["favourable_fn"], axis=1)
+    # The per-record classifiers take one plain dict per row, built once: a
+    # row-wise DataFrame.apply builds a 45-column Series for every row on every
+    # pass, which made this step ~14s on the 12k-row HAS sheet.
+    records = frame.to_dict("records")
 
-    frame["area_broad"] = [_broad_area(agency, a) for a in frame["therapeutic_area"]]
-    blob_cols = ("appraisal_id", "inn", "brand", "drug_name", "indication", "therapeutic_area")
-    frame["search_blob"] = [
-        " | ".join(_text(v) or "" for v in values).lower()
-        for values in zip(*(frame[c] for c in blob_cols))
-    ]
+    def per_record(name, fn):
+        values = [fn(r) for r in records]
+        for r, value in zip(records, values):
+            r[name] = value
+        frame[name] = values
+
+    per_record("outcome", cfg["outcome_fn"])
+    for name, fn in cfg["derived"].items():
+        per_record(name, fn)
+    per_record("favourable", cfg["favourable_fn"])
+    frame["outcome_family"] = [outcome_family(agency, o) for o in frame["outcome"]]
+
+    atc = frame["ATC_codes"] if "ATC_codes" in frame.columns else [None] * len(frame)
+    areas = [therapy_areas(agency, a, c) for a, c in zip(frame["therapeutic_area"], atc)]
+    frame["therapy_area_en"] = [primary for primary, _ in areas]
+    frame["_areas"] = [every for _, every in areas]
+    frame["procedure_type"] = ([gba_procedure_group(r) for r in records] if agency == "G-BA"
+                               else frame["assessment_type"].map(has_procedure_group))
+    frame["condition"] = [condition_label(agency, r) for r in records]
+    frame["orphan"] = (frame["orphan_status"].map(orphan_flag)
+                       if "orphan_status" in frame.columns else None)
+
+    def folded(cols):
+        joined = None
+        for col in (c for c in cols if c in frame.columns):
+            part = frame[col].map(lambda v: _text(v) or "").astype(str)
+            joined = part if joined is None else joined + " | " + part
+        return _fold_series(joined) if joined is not None else pd.Series("", index=frame.index)
+
+    name_cols = ["inn", "brand", "drug_name", "generic_name", "source_title",
+                 "title_generic_name"]
+    frame["_drug_text"] = folded(name_cols)
+    # The therapy-area tag is searched too: G-BA's names the disease
+    # ('Mammakarzinom (onkologische Erkrankungen)'), HAS's often does ('Sein/
+    # Cancer du sein'). HAS's anatomical ones ('Appareil digestif/Œsophage,
+    # estomac, intestin') are why CONDITION_TERMS uses disease phrases
+    # ('cancer de l'oesophage'), never a bare organ word, for its cancers.
+    frame["_primary_text"] = folded(
+        ["appraisal_id"] + name_cols + ["condition", "indication", "therapeutic_area"])
+    secondary_cols = [c for c in ("decision_simple", "decision_raw", "added_benefit_assessment",
+                                  "patient_population", "comparator") if c in frame.columns]
+    frame["_secondary_text"] = (folded(secondary_cols) + " | "
+                                + _fold_series(frame["decision_reasoning"], limit=700))
     frame["_molecules"] = [
         molecule_set(g) if _text(g) else molecule_set(d)
         for g, d in zip(frame["generic_name"], frame["drug_name"])
@@ -2266,68 +3121,268 @@ def render_agency_switcher():
     return choice
 
 
-def agency_sidebar_filters(agency, frame):
+def agency_sidebar_guide(agency):
+    """The G-BA / HAS sidebar is a short how-to. All searching and filtering
+    lives in the Explorer on the page, so there's one place to look."""
+    cfg = AGENCY_CONFIG[agency]
+    st.sidebar.markdown("**How to use this page**")
+    st.sidebar.markdown(
+        f"1. **Search** in the Explorer — a drug, a condition (English or "
+        f"{cfg['language']}) and/or tick therapy areas and outcomes.\n"
+        f"2. **Pick a section** to read the results: the decisions, analysis, evidence, "
+        f"other HTA bodies, or ask AI about them.\n"
+        f"3. **Clear** the search to go back to all {cfg['noun']}.")
+    st.sidebar.caption("Everything on the page — tables, charts, evidence and the AI chat — "
+                       "covers exactly the decisions your search found.")
+
+
+# ── HTA Evidence Explorer (search) ───────────────────────────────────────────
+
+EXPLORER_FIELDS = ("drug", "condition", "areas", "outcomes", "procedures", "years", "orphan")
+RESULTS_SECTIONS = ["📋 Decisions", "📊 Analysis", "🧾 Evidence", "🌍 Other HTA bodies",
+                    "💬 Ask AI"]
+
+
+def _explorer_key(slug, field):
+    return f"w_{slug}_q_{field}"
+
+
+def _clear_agency_search(slug):
+    """Button callback: back to the full catalogue, every Explorer field blank."""
+    for field in EXPLORER_FIELDS:
+        st.session_state.pop(_explorer_key(slug, field), None)
+    st.session_state.pop(f"{slug}_query", None)
+
+
+def _counted(counts):
+    return lambda option: f"{option} · {counts.get(option, 0):,}"
+
+
+def render_agency_explorer(agency, frame):
+    """
+    The search form. Nothing is filtered until Search is pressed, so ticking
+    several boxes doesn't rerun the page each time; the submitted search is
+    kept in session state and drives every results section below.
+    """
     cfg = AGENCY_CONFIG[agency]
     slug = cfg["slug"]
-    st.sidebar.title("🔍 Filters")
+    st.subheader("🔎 HTA Evidence Explorer")
+    st.caption(
+        f"Search the {len(frame):,} {agency} {cfg['noun']} by drug, condition or therapy area. "
+        f"English, {cfg['language']} and abbreviations all work — e.g. "
+        f"{cfg['search_examples']}. Leave everything blank to see every {cfg['noun'][:-1]}, "
+        f"newest first.")
 
-    search = st.sidebar.text_input(
-        "Search",
-        placeholder="Drug, brand, indication or ID",
-        key=f"w_{slug}_search",
-        help="Searches INN, brand name, indication, therapy area and procedure ID. "
-             "Abbreviations such as NSCLC, CRC or UC are expanded to the matching disease term.",
-    )
-    areas = sorted(frame["area_broad"].dropna().unique(), key=str.lower)
-    selected_areas = st.sidebar.multiselect(
-        "Therapy area", areas, key=f"w_{slug}_areas",
-        help="Leave empty to include all areas. Grouped on the workbook's broad category for "
-             f"{agency} (its own disease-area tag, not the specific indication).",
-    )
-    selected_outcomes = st.sidebar.multiselect(
-        "Outcome", outcome_order(agency, frame), key=f"w_{slug}_outcomes",
-        help="Leave empty to include all outcomes.",
-    )
-    types = (sorted({t for t in frame["assessment_type"].map(_text).dropna()}, key=str.lower)
-             if "assessment_type" in frame.columns else [])
-    selected_types = []
-    if len(types) > 1:
-        selected_types = st.sidebar.multiselect(
-            "Assessment type", types, key=f"w_{slug}_types",
-            help="Leave empty to include all procedure types.")
-
+    area_counts = Counter(a for areas in frame["_areas"] for a in areas)
+    area_options = [a for a in AREA_ORDER if area_counts.get(a)]
+    outcome_counts = frame["outcome"].value_counts().to_dict()
+    outcome_options = outcome_order(agency, frame)
+    procedure_counts = frame["procedure_type"].value_counts().to_dict()
+    procedure_options = [p for p in cfg["procedure_order"] if procedure_counts.get(p)]
     years = frame["year"].dropna()
-    year_range, full_range = None, None
-    if len(years) and int(years.min()) < int(years.max()):
-        full_range = (int(years.min()), int(years.max()))
-        init_range_state(f"w_{slug}_years", *full_range)
-        year_range = st.sidebar.slider(
-            "Decision year range", min_value=full_range[0], max_value=full_range[1],
-            step=1, key=f"w_{slug}_years",
-            help="Calendar year of the decision (publication date where no decision date "
-                 "is recorded).")
-    elif len(years):
-        st.sidebar.caption(
-            f"All records are dated {int(years.min())}. A year-range filter appears once the "
-            f"data spans more than one year.")
+    year_bounds = (int(years.min()), int(years.max())) if len(years) else None
+    if year_bounds and year_bounds[0] < year_bounds[1]:
+        init_range_state(_explorer_key(slug, "years"), *year_bounds)
 
+    with st.form(f"{slug}_explorer_form"):
+        c1, c2 = st.columns(2)
+        c1.text_input(
+            "Drug or active substance", key=_explorer_key(slug, "drug"),
+            placeholder="e.g. pembrolizumab or Keytruda",
+            help="Optional. INN or brand name; combination regimens match on any of their "
+                 "active substances.")
+        c2.text_input(
+            "Condition or keyword", key=_explorer_key(slug, "condition"),
+            placeholder=cfg["condition_placeholder"],
+            help=f"Optional. English terms are translated to the {cfg['language']} used in "
+                 f"the {agency} records, so 'breast cancer' also finds "
+                 + ("'Mammakarzinom'." if agency == "G-BA" else "'cancer du sein'."))
+        st.pills(
+            "Therapy areas — tick to narrow (none ticked = all areas)", area_options,
+            selection_mode="multi", format_func=_counted(area_counts),
+            key=_explorer_key(slug, "areas"),
+            help="One English vocabulary shared with the NICE and "
+                 + ("HAS" if agency == "G-BA" else "G-BA") + " pages. A decision filed under "
+                 "several areas counts in each.")
+        st.pills(
+            "Outcomes — tick to narrow (none ticked = all outcomes)", outcome_options,
+            selection_mode="multi", format_func=_counted(outcome_counts),
+            key=_explorer_key(slug, "outcomes"))
+        st.pills(
+            "Procedure type — tick to narrow (none ticked = all)", procedure_options,
+            selection_mode="multi", format_func=_counted(procedure_counts),
+            key=_explorer_key(slug, "procedures"),
+            help=("New indication and re-assessment are read from the procedure title; "
+                  "everything else is a standard benefit assessment." if agency == "G-BA"
+                  else "HAS records ~700 free-text procedure names; these are the kinds "
+                       "of procedure behind them. Tick First listing and Extension of "
+                       "indication to leave out routine renewals."))
+        c3, c4 = st.columns([3, 2])
+        with c3:
+            if year_bounds and year_bounds[0] < year_bounds[1]:
+                st.slider("Decision years", min_value=year_bounds[0],
+                          max_value=year_bounds[1], step=1, key=_explorer_key(slug, "years"))
+        with c4:
+            if agency == "G-BA" and frame["orphan"].notna().any():
+                st.session_state.setdefault(_explorer_key(slug, "orphan"), "All")
+                st.radio("Orphan drugs", ["All", "Orphan only", "Non-orphan only"],
+                         horizontal=True, key=_explorer_key(slug, "orphan"))
+        b1, b2, _ = st.columns([1, 1, 4])
+        submitted = b1.form_submit_button("🔎 Search", type="primary", width="stretch")
+        b2.form_submit_button("Clear", on_click=_clear_agency_search, args=(slug,),
+                              width="stretch")
+
+    if submitted:
+        st.session_state[f"{slug}_query"] = {
+            field: st.session_state.get(_explorer_key(slug, field)) for field in EXPLORER_FIELDS}
+        # A new search opens on its decisions, not on the section last viewed.
+        st.session_state[f"w_{slug}_section"] = RESULTS_SECTIONS[0]
+    return st.session_state.get(f"{slug}_query") or {}
+
+
+def run_agency_search(agency, frame, query):
+    """
+    The records a search finds, most relevant first, with _score and _why.
+
+    Filters (areas, outcomes, procedure types, years, orphan status) narrow;
+    drug and condition terms must match; qualifiers and recency only rank. A
+    drug match counts most, then a condition named in the record's own title,
+    indication or category, then one found only in the decision wording or
+    reasoning. With no drug or condition the newest decisions come first.
+    """
     result = frame
-    if search and search.strip():
-        needle = re.sub(r"\s+", " ", search.strip().lower())
-        resolved, _ = resolve_keyword(search)
-        mask = result["search_blob"].str.contains(needle, regex=False)
-        if resolved and resolved != needle:
-            mask = mask | result["search_blob"].str.contains(resolved, regex=False)
-        result = result[mask]
-    if selected_areas:
-        result = result[result["area_broad"].isin(selected_areas)]
-    if selected_outcomes:
-        result = result[result["outcome"].isin(selected_outcomes)]
-    if selected_types:
-        result = result[result["assessment_type"].isin(selected_types)]
-    if year_range and tuple(year_range) != full_range:
-        result = result[result["year"].between(year_range[0], year_range[1])]
-    return result
+    areas = set(query.get("areas") or [])
+    if areas:
+        result = result[result["_areas"].map(lambda values: bool(areas & set(values)))]
+    if query.get("outcomes"):
+        result = result[result["outcome"].isin(query["outcomes"])]
+    if query.get("procedures"):
+        result = result[result["procedure_type"].isin(query["procedures"])]
+    years = query.get("years")
+    if years and len(years) == 2 and result["year"].notna().any():
+        lo, hi = int(years[0]), int(years[1])
+        bounds = (int(frame["year"].min()), int(frame["year"].max()))
+        if (lo, hi) != bounds:
+            result = result[result["year"].between(lo, hi)]
+    orphan = query.get("orphan")
+    if orphan == "Orphan only":
+        result = result[result["orphan"].eq("Yes")]
+    elif orphan == "Non-orphan only":
+        result = result[result["orphan"].eq("No")]
+
+    score = pd.Series(0.0, index=result.index)
+    why = pd.Series("", index=result.index)
+    drug = _fold(query.get("drug"))
+    if drug:
+        # Ranked by where the drug appears: as the record's own active
+        # substance or brand first — for a combination query, more of the named
+        # substances ranks higher — then merely mentioned (as a partner or prior
+        # therapy) in the indication or decision text.
+        keys = molecule_set(query.get("drug"))
+        own_share = (result["_molecules"].map(lambda m: len(m & keys) / len(keys))
+                     if keys else pd.Series(0.0, index=result.index))
+        name_hit = result["_drug_text"].str.contains(_term_pattern(drug), regex=True)
+        own = (own_share > 0) | name_hit
+        pattern = _any_term_regex([drug] + [k for k in keys if len(k) > 4])
+        mentioned = ~own & (result["_primary_text"].str.contains(pattern, regex=True)
+                            | result["_secondary_text"].str.contains(pattern, regex=True))
+        hit = own | mentioned
+        result, score, why = result[hit], score[hit], why[hit]
+        own_share, name_hit, own = own_share[hit], name_hit[hit], own[hit]
+        score = score + own.map({True: 80, False: 30}) + own_share * 40 + name_hit * 10
+        why = why + own.map({True: "Drug", False: "Drug (mentioned)"})
+        # A combination query ('nivolumab + ipilimumab') ranks records naming
+        # more of its substances anywhere — G-BA often lists only the assessed
+        # drug as the substance and the partner in the indication.
+        parts = [p.strip() for p in _MOLECULE_SEPARATORS.split(drug) if len(p.strip()) >= 4]
+        if len(parts) > 1:
+            for part in parts:
+                pattern = _term_pattern(_inn_stem(part))
+                score = score + (result["_primary_text"].str.contains(pattern, regex=True)
+                                 | result["_secondary_text"].str.contains(pattern, regex=True)) * 15
+
+    groups, labels, extra = expand_condition_query(agency, query.get("condition"))
+    if groups:
+        in_primary = pd.Series(True, index=result.index)
+        matched = pd.Series(True, index=result.index)
+        for terms in groups:
+            pattern = _any_term_regex(terms)
+            primary = result["_primary_text"].str.contains(pattern, regex=True)
+            secondary = result["_secondary_text"].str.contains(pattern, regex=True)
+            matched &= primary | secondary
+            in_primary &= primary
+        result, score, why = result[matched], score[matched], why[matched]
+        in_primary = in_primary[matched]
+        score = score + in_primary.map({True: 60, False: 25})
+        joiner = why.map(lambda w: " + " if w else "")
+        why = why + joiner + in_primary.map({True: "Condition",
+                                             False: "Condition (in decision text)"})
+    for word in extra:
+        pattern = _term_pattern(word)
+        score = score + result["_primary_text"].str.contains(pattern, regex=True) * 5 \
+                      + result["_secondary_text"].str.contains(pattern, regex=True) * 2
+
+    dated = result["decision_dt"]
+    if dated.notna().any():
+        lo, hi = dated.min(), dated.max()
+        span = max((hi - lo).days, 1)
+        score = score + ((dated - lo).dt.days / span * 10).fillna(0)
+    result = result.assign(_score=score, _why=why)
+    return result.sort_values(["_score", "decision_dt"], ascending=[False, False],
+                              na_position="last", kind="stable"), labels
+
+
+def _query_key(query):
+    """A hashable, order-stable form of the submitted search."""
+    key = []
+    for field in EXPLORER_FIELDS:
+        value = query.get(field)
+        if isinstance(value, (list, tuple)):
+            value = tuple(value)
+        elif isinstance(value, str):
+            value = value.strip() or None
+        key.append((field, value))
+    return tuple(key)
+
+
+@st.cache_data(max_entries=64)
+def _search_ranking(agency, version, query_key):
+    """Cached result of one search: (row index, score, why, condition labels).
+    Only the ranking is cached, not the rows, so a hit costs a slice of the
+    already-cached frame. A condition search over the 12k HAS records takes up
+    to ~1s, and without this it would repeat on every click in the results."""
+    frame = prepare_agency_frame(agency, version)
+    ranked, labels = run_agency_search(agency, frame, dict(query_key))
+    return (list(ranked.index), ranked["_score"].tolist(), ranked["_why"].tolist(), labels)
+
+
+def cached_agency_search(agency, version, query):
+    frame = prepare_agency_frame(agency, version)
+    index, score, why, labels = _search_ranking(agency, version, _query_key(query))
+    results = frame.loc[index].assign(_score=score, _why=why)
+    return results, labels
+
+
+def describe_query(agency, query, labels, frame=None):
+    """One line saying what was searched, including how the condition was read."""
+    parts = []
+    if _text(query.get("drug")):
+        parts.append(f"drug **{_md_safe(query['drug'].strip())}**")
+    if _text(query.get("condition")):
+        read_as = (f" (read as: {', '.join(labels)})" if labels else "")
+        parts.append(f"condition **{_md_safe(query['condition'].strip())}**{read_as}")
+    for field, label in (("areas", "areas"), ("outcomes", "outcomes"),
+                         ("procedures", "procedure types")):
+        if query.get(field):
+            parts.append(f"{label}: {', '.join(query[field])}")
+    years = query.get("years")
+    full = ((int(frame["year"].min()), int(frame["year"].max()))
+            if frame is not None and frame["year"].notna().any() else None)
+    if years and len(years) == 2 and tuple(int(y) for y in years) != full:
+        parts.append(f"years {years[0]}–{years[1]}")
+    if query.get("orphan") and query["orphan"] != "All":
+        parts.append(query["orphan"].lower())
+    return " · ".join(parts)
 
 
 # ── Record detail & synthesis ────────────────────────────────────────────────
@@ -2342,12 +3397,29 @@ def render_agency_record(agency, row, docs, hits):
         st.caption(f"Recorded as: {_md_safe(recorded)}")
 
     meta = [f"**Decision date:** {row['date_label']}"]
-    published = _text(row.get("publication_date"))
-    if published and published != _text(row.get("decision_date")):
-        meta.append(f"**Published:** {_md_safe(published)}")
-    meta.append(f"**Assessment type:** "
-                f"{_md_safe(_text(row.get('assessment_type')) or 'Not recorded')}")
+    published = _parse_date(row.get("publication_date"))
+    if not pd.isna(published) and published != _parse_date(row.get("decision_date")):
+        meta.append(f"**Published:** {published:%d %b %Y}")
+    meta.append(f"**Procedure:** {_md_safe(row.get('procedure_type') or 'Not recorded')}")
+    if row.get("orphan") == "Yes":
+        meta.append("**Orphan drug**")
     st.markdown(" · ".join(meta))
+    areas = ", ".join(row.get("_areas") or ()) or row.get("therapy_area_en")
+    condition = _text(row.get("condition"))
+    indication = _text(row.get("indication"))
+    if indication == "Indication not recorded":
+        indication = None
+    # Where the table's condition label is just the indication trimmed, the
+    # full indication below says it better — don't repeat it.
+    if condition and indication and indication.startswith(condition.rstrip("…").rstrip()):
+        condition = None
+    st.markdown((f"**Condition:** {_md_safe(condition)} · " if condition else "")
+                + f"**Therapy area:** {_md_safe(areas)}")
+    assessment_type = _text(row.get("assessment_type"))
+    if assessment_type and assessment_type.rstrip(";") != row.get("procedure_type"):
+        st.caption(f"Procedure as recorded: {_md_safe(_shorten(assessment_type, 200))}")
+    if indication:
+        st.markdown(f"**Indication (as recorded):** {_md_safe(_shorten(indication, 700))}")
 
     for label, col in cfg["detail_fields"]:
         value = _text(row.get(col))
@@ -2361,9 +3433,13 @@ def render_agency_record(agency, row, docs, hits):
         st.caption(_md_safe(note))
 
     record_docs = docs[docs["Appraisal_ID"] == str(row["appraisal_id"])]
+    def _doc_date(value):
+        when = _parse_date(value)
+        return f" · {when:%d %b %Y}" if not pd.isna(when) else (
+            f" · {_md_safe(value)}" if _text(value) else "")
+
     links = [
-        f"- {_md_link(d['Document_Type'], d['Source_URL'])}"
-        + (f" · {d['Date']}" if _text(d["Date"]) else "")
+        f"- {_md_link(d['Document_Type'], d['Source_URL'])}{_doc_date(d['Date'])}"
         for _, d in record_docs.iterrows() if _text(d["Source_URL"])
     ]
     if links:
@@ -2421,12 +3497,13 @@ def render_synthesis_block(block, frame):
         for idx in matched.index[:SYNTHESIS_MAX_ITEMS]:
             row = matched.loc[idx]
             text = matched_texts.loc[idx]
-            st.markdown(f"**{row['appraisal_id']} — {row['inn']}** · "
-                        f"_{_md_safe(_shorten(row['indication'], 90))}_\n\n"
+            about = _text(row.get("condition")) or row["indication"]
+            st.markdown(f"**{_md_safe(row['appraisal_id'])} — {_md_safe(row['inn'])}** · "
+                        f"{row['outcome']} · _{_md_safe(_shorten(about, 90))}_\n\n"
                         f"> {_md_safe(_shorten(text, 450))}")
         if total > SYNTHESIS_MAX_ITEMS:
-            st.caption(f"Showing the first {SYNTHESIS_MAX_ITEMS} of {total} — narrow the "
-                       f"selection with the sidebar to see the rest.")
+            st.caption(f"Showing the {SYNTHESIS_MAX_ITEMS} most relevant of {total:,} — narrow "
+                       f"your search in the Explorer to see a specific set.")
 
 
 def render_economic_block(frame):
@@ -2476,112 +3553,184 @@ def _integer_axis(fig, axis, max_value):
     update(rangemode="tozero", tickformat=",d", dtick=1 if max_value <= 8 else None)
 
 
-def render_agency_charts(agency, frame, full_frame):
-    cfg = AGENCY_CONFIG[agency]
-    colors = cfg["outcome_colors"]
-    order = outcome_order(agency, full_frame)
+CHART_OPTIONS = {
+    "G-BA": ["Outcome breakdown (table)", "Outcome mix", "Decisions over time",
+             "By therapy area", "Certainty of evidence"],
+    "HAS": ["Outcome breakdown (table)", "Outcome mix", "Decisions over time",
+            "By therapy area", "SMR & ASMR ratings"],
+}
+CHART_DEFAULTS = ["Outcome breakdown (table)", "Outcome mix"]
+MAX_AREA_BARS = 12
 
-    left, right = st.columns(2)
-    with left:
+
+def _style_bars(fig, height):
+    """Thin bars with rounded data ends, recessive chrome, legend above."""
+    fig.update_layout(height=height, margin={"l": 8, "r": 8, "t": 36, "b": 8},
+                      legend={"orientation": "h", "yanchor": "bottom", "y": 1.02,
+                              "xanchor": "left", "x": 0, "title": None},
+                      barcornerradius=4)
+    return fig
+
+
+def outcome_breakdown_table(agency, frame):
+    """Every outcome on the agency's full scale, with its share — the readable
+    form for a 12–13-class scale, and the table view behind the charts."""
+    counts = frame["outcome"].value_counts()
+    order = [o for o in outcome_order(agency, frame) if counts.get(o)]
+    n = len(frame)
+    return pd.DataFrame({
+        "Outcome": order,
+        "Group": [outcome_family(agency, o) for o in order],
+        "Decisions": [int(counts[o]) for o in order],
+        "Share": [counts[o] / n * 100 if n else 0 for o in order],
+    })
+
+
+def render_outcome_table(agency, frame, key):
+    table = outcome_breakdown_table(agency, frame)
+    st.dataframe(
+        table,
+        column_config={
+            "Decisions": st.column_config.NumberColumn("Decisions", format="%d"),
+            "Share": st.column_config.ProgressColumn("Share", format="%.0f%%", min_value=0,
+                                                     max_value=100),
+        },
+        hide_index=True, width="stretch", height=35 * (len(table) + 1) + 3, key=key)
+
+
+def render_agency_charts(agency, frame):
+    """The Analysis section: a checklist of views, each a fixed, readable size."""
+    cfg = AGENCY_CONFIG[agency]
+    slug = cfg["slug"]
+    mode = _theme_mode()
+    colors = FAMILY_COLORS[mode]
+    families = family_order(agency)
+    key = f"w_{slug}_charts"
+    st.session_state.setdefault(key, CHART_DEFAULTS)
+    shown = st.pills("Show — tick the views you want", CHART_OPTIONS[agency],
+                     selection_mode="multi", key=key) or []
+    if not shown:
+        st.caption("Tick a view above to show it.")
+        return
+    fam = frame["outcome_family"]
+
+    if "Outcome breakdown (table)" in shown:
         st.markdown("**Outcome breakdown**")
-        fig = px.pie(frame, names="outcome", color="outcome", color_discrete_map=colors,
-                     hole=0.4, category_orders={"outcome": order})
-        st.plotly_chart(fig, width="stretch", key=f"{cfg['slug']}_outcome_pie")
-    with right:
+        render_outcome_table(agency, frame, key=f"{slug}_analysis_outcomes")
+        st.caption("Group is how the outcome is coloured in the charts below.")
+
+    if "Outcome mix" in shown:
+        st.markdown("**Outcome mix**")
+        counts = fam.value_counts().reindex(families).fillna(0).astype(int)
+        counts = counts[counts > 0]
+        data = pd.DataFrame({"Group": counts.index, "Decisions": counts.to_numpy()})
+        data["label"] = [f"{v:,}  ({v / len(frame) * 100:.0f}%)" for v in data["Decisions"]]
+        fig = px.bar(data, x="Decisions", y="Group", orientation="h", color="Group",
+                     color_discrete_map=colors, text="label",
+                     category_orders={"Group": families})
+        fig.update_traces(textposition="outside", cliponaxis=False, showlegend=False,
+                          hovertemplate="%{y}: %{x:,}<extra></extra>")
+        fig.update_layout(xaxis_title=None, yaxis_title=None, bargap=0.45,
+                          xaxis={"range": [0, data["Decisions"].max() * 1.25]})
+        _integer_axis(fig, "x", data["Decisions"].max())
+        st.plotly_chart(_style_bars(fig, 44 * len(data) + 70), width="stretch",
+                        key=f"{slug}_mix")
+
+    if "Decisions over time" in shown:
         st.markdown(f"**{cfg['noun_title']} over time**")
         dated = frame.dropna(subset=["decision_dt"])
         if dated.empty:
             st.caption("No decision dates recorded in this selection.")
         else:
-            by_year = dated["decision_dt"].dt.year.nunique() >= 2
-            periods = dated["decision_dt"].dt.to_period("Y" if by_year else "M")
-            counts = (
-                dated.assign(_period=periods,
-                             period=periods.dt.strftime("%Y" if by_year else "%b %Y"))
-                .groupby(["_period", "period", "outcome"]).size()
-                .reset_index(name="count").sort_values("_period")
-            )
-            fig = px.bar(counts, x="period", y="count", color="outcome",
-                         color_discrete_map=colors,
-                         category_orders={"outcome": order,
-                                          "period": list(dict.fromkeys(counts["period"]))})
-            fig.update_layout(barmode="stack", xaxis_title=None, yaxis_title="Count",
-                              legend_title=None, bargap=0.5)
-            _integer_axis(fig, "y", counts.groupby("period")["count"].sum().max())
-            st.plotly_chart(fig, width="stretch", key=f"{cfg['slug']}_over_time")
+            by_year = (dated.assign(Year=dated["decision_dt"].dt.year.astype(int),
+                                    Group=dated["outcome_family"])
+                       .groupby(["Year", "Group"]).size().reset_index(name="Decisions"))
+            fig = px.bar(by_year, x="Year", y="Decisions", color="Group",
+                         color_discrete_map=colors, category_orders={"Group": families})
+            fig.update_layout(barmode="stack", xaxis_title=None, yaxis_title=None,
+                              bargap=0.35, xaxis={"dtick": 1 if by_year["Year"].nunique() <= 12
+                                                  else 2})
+            _integer_axis(fig, "y", by_year.groupby("Year")["Decisions"].sum().max())
+            st.plotly_chart(_style_bars(fig, 340), width="stretch", key=f"{slug}_time")
 
-    st.markdown("**Outcome by therapy area**")
-    MAX_AREA_BARS = 25
-    area_totals = frame["area_broad"].value_counts()
-    if len(area_totals) > MAX_AREA_BARS:
-        # A defensive cap, not just a cosmetic one: area_broad is derived from
-        # each agency's own free-text category field (see _broad_area), and a
-        # future data refresh could reintroduce hundreds of near-unique
-        # values the way the raw, un-bucketed field once did — a chart whose
-        # height scales with category count turns that straight into an
-        # unreadable, multi-thousand-pixel page. Keeping only the largest
-        # categories and folding the rest into "Other" keeps the chart a
-        # fixed, readable size no matter how the upstream category field
-        # behaves.
-        kept = set(area_totals.head(MAX_AREA_BARS).index)
-        st.caption(f"Showing the {MAX_AREA_BARS} largest of {len(area_totals)} therapy areas — "
-                   f"the rest are folded into 'Other'. Use the sidebar filter for a specific one.")
-        area_col = frame["area_broad"].where(frame["area_broad"].isin(kept), "Other")
-    else:
-        area_col = frame["area_broad"]
-    by_area = (frame.assign(area_broad=area_col)
-               .groupby(["area_broad", "outcome"]).size().reset_index(name="count"))
-    fig = px.bar(by_area, x="count", y="area_broad", color="outcome", orientation="h",
-                 color_discrete_map=colors, category_orders={"outcome": order})
-    fig.update_layout(barmode="stack", yaxis={"categoryorder": "total ascending"},
-                      yaxis_title=None, xaxis_title="Count", legend_title=None, bargap=0.45,
-                      height=max(260, 32 * by_area["area_broad"].nunique() + 140))
-    _integer_axis(fig, "x", by_area.groupby("area_broad")["count"].sum().max())
-    st.plotly_chart(fig, width="stretch", key=f"{cfg['slug']}_by_area")
+    if "By therapy area" in shown:
+        st.markdown("**By therapy area**")
+        # Every area a decision is filed under, so bar lengths match the counts
+        # the Explorer's therapy-area checklist filters on.
+        exploded = (frame.assign(Area=frame["_areas"].map(list), Group=fam)
+                    [["Area", "Group"]].explode("Area"))
+        area_totals = exploded["Area"].value_counts()
+        kept = list(area_totals.head(MAX_AREA_BARS).index)
+        exploded["Area"] = exploded["Area"].where(exploded["Area"].isin(kept), "Other areas")
+        by_area = exploded.groupby(["Area", "Group"]).size().reset_index(name="Decisions")
+        fig = px.bar(by_area, x="Decisions", y="Area", color="Group", orientation="h",
+                     color_discrete_map=colors, category_orders={"Group": families})
+        fig.update_layout(barmode="stack", yaxis={"categoryorder": "total ascending",
+                                                  "title": None},
+                          xaxis_title=None, bargap=0.4)
+        _integer_axis(fig, "x", by_area.groupby("Area")["Decisions"].sum().max())
+        st.plotly_chart(_style_bars(fig, 30 * by_area["Area"].nunique() + 110),
+                        width="stretch", key=f"{slug}_areas")
+        note = ("A decision filed under several areas counts in each, as it does in the "
+                "Explorer's checklist.")
+        if len(area_totals) > MAX_AREA_BARS:
+            note = (f"The {MAX_AREA_BARS} largest of {len(area_totals)} therapy areas; the rest "
+                    f"are grouped as 'Other areas'. " + note)
+        st.caption(note)
 
-    if agency == "G-BA":
+    if "Certainty of evidence" in shown and agency == "G-BA":
+        st.markdown("**Positive ratings by certainty of evidence**")
         rated = frame[frame["certainty"].notna() & frame["favourable"].eq(True)]
-        if len(rated):
-            st.markdown("**Positive ratings by certainty of evidence**")
+        if rated.empty:
+            st.caption("No positive rating with a stated certainty in this selection.")
+        else:
             levels = [c for c in ("Proof", "Indication", "Hint") if c in set(rated["certainty"])]
             table = pd.crosstab(rated["outcome"], rated["certainty"]).reindex(columns=levels)
-            table = table.reindex([o for o in order if o in table.index])
+            table = table.reindex([o for o in outcome_order(agency, frame) if o in table.index])
             st.dataframe(table.rename_axis(index="Outcome", columns=None),
                          width=150 + 110 * len(levels) + 180)
             st.caption("For mixed resolutions, certainty refers to the subgroup that received "
                        "a positive rating.")
 
-    if agency == "HAS":
+    if "SMR & ASMR ratings" in shown and agency == "HAS":
         smr = frame[frame["_smr"].notna()]
         asmr = frame[frame["_asmr"].notna()]
-        if len(smr) or len(asmr):
-            c1, c2 = st.columns(2)
-            with c1:
-                st.markdown("**SMR (actual clinical benefit)**")
-                if len(smr):
-                    counts = smr["_smr"].value_counts().reindex(
-                        [s for s in SMR_ORDER if s in set(smr["_smr"])]
-                        + sorted(set(smr["_smr"]) - set(SMR_ORDER))).reset_index()
-                    counts.columns = ["SMR", "Count"]
-                    fig = px.bar(counts, x="SMR", y="Count", color_discrete_sequence=["#2a78d6"])
-                    _integer_axis(fig, "y", counts["Count"].max())
-                    st.plotly_chart(fig, width="stretch", key="has_smr")
-                else:
-                    st.caption("No SMR ratings in this selection.")
-            with c2:
-                st.markdown("**ASMR (improvement in clinical benefit)**")
-                if len(asmr):
-                    levels = [lv for lv in ("I", "II", "III", "IV", "V") if lv in set(asmr["_asmr"])]
-                    counts = asmr["_asmr"].value_counts().reindex(levels).reset_index()
-                    counts.columns = ["ASMR", "Count"]
-                    counts["ASMR"] = "ASMR " + counts["ASMR"]
-                    fig = px.bar(counts, x="ASMR", y="Count", color="ASMR",
-                                 color_discrete_map=colors)
-                    fig.update_layout(showlegend=False)
-                    _integer_axis(fig, "y", counts["Count"].max())
-                    st.plotly_chart(fig, width="stretch", key="has_asmr")
-                else:
-                    st.caption("No ASMR ratings in this selection.")
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown("**SMR (actual clinical benefit)**")
+            if len(smr):
+                counts = smr["_smr"].value_counts().reindex(
+                    [s for s in SMR_ORDER if s in set(smr["_smr"])]
+                    + sorted(set(smr["_smr"]) - set(SMR_ORDER))).reset_index()
+                counts.columns = ["SMR", "Decisions"]
+                fig = px.bar(counts, x="SMR", y="Decisions", text="Decisions",
+                             color_discrete_sequence=[SINGLE_SERIES[mode]])
+                fig.update_traces(textposition="outside", cliponaxis=False,
+                                  texttemplate="%{text:,}")
+                fig.update_layout(xaxis_title=None, yaxis_title=None, bargap=0.45)
+                _integer_axis(fig, "y", counts["Decisions"].max())
+                st.plotly_chart(_style_bars(fig, 300), width="stretch", key=f"{slug}_smr")
+            else:
+                st.caption("No SMR ratings in this selection.")
+        with c2:
+            st.markdown("**ASMR (improvement in clinical benefit)**")
+            if len(asmr):
+                levels = [lv for lv in _ASMR_ORDER if lv in set(asmr["_asmr"])]
+                counts = asmr["_asmr"].value_counts().reindex(levels).reset_index()
+                counts.columns = ["ASMR", "Decisions"]
+                counts["ASMR"] = "ASMR " + counts["ASMR"]
+                ramp = dict(zip(["ASMR I", "ASMR II", "ASMR III", "ASMR IV"], ASMR_RAMP[mode]))
+                ramp["ASMR V"] = NEUTRAL_GREY[mode]
+                fig = px.bar(counts, x="ASMR", y="Decisions", color="ASMR", text="Decisions",
+                             color_discrete_map=ramp)
+                fig.update_traces(textposition="outside", cliponaxis=False,
+                                  texttemplate="%{text:,}", showlegend=False)
+                fig.update_layout(xaxis_title=None, yaxis_title=None, bargap=0.45)
+                _integer_axis(fig, "y", counts["Decisions"].max())
+                st.plotly_chart(_style_bars(fig, 300), width="stretch", key=f"{slug}_asmr")
+                st.caption("ASMR I = major improvement … V = none (grey).")
+            else:
+                st.caption("No ASMR ratings in this selection.")
 
 
 # ── Grounded chat over the current selection ─────────────────────────────────
@@ -2645,8 +3794,7 @@ def build_agency_chat_context(agency, frame, matches):
 def render_agency_chat(agency, frame, matches):
     cfg = AGENCY_CONFIG[agency]
     slug = cfg["slug"]
-    st.divider()
-    st.subheader("💬 Ask about this selection")
+    st.markdown(f"**Ask AI about the {len(frame):,} {cfg['noun']} your search found**")
 
     api_key = _anthropic_api_key()
     if not api_key:
@@ -2663,21 +3811,24 @@ def render_agency_chat(agency, frame, matches):
         st.session_state[signature_key] = signature
     history = st.session_state[history_key]
 
+    shown = min(len(frame), CHAT_MAX_CONTEXT_ROWS)
     st.caption(
-        f"Ask about the {len(frame)} {agency} {cfg['noun']} currently selected by the sidebar "
-        f"filters — e.g. \"which comparators came up most?\" or \"how did NICE decide on the "
-        f"same molecules?\". Answers are grounded only in this selection and will say so if "
-        f"something isn't covered, rather than guessing.")
+        "e.g. \"which comparators came up most?\" or \"how did NICE decide on the same "
+        "molecules?\". Answers use only these results — the "
+        + (f"{shown} most relevant of {len(frame):,}" if shown < len(frame) else f"{shown}")
+        + " — and say so if something isn't covered, rather than guessing. Narrow the search "
+          "to put a specific set in front of it.")
     turns_used = len(history) // 2
-    st.caption(f"{turns_used}/{CHAT_MAX_TURNS} questions used for this selection.")
+    counter = st.empty()   # filled in again below once a new answer has landed
+    counter.caption(f"{turns_used}/{CHAT_MAX_TURNS} questions used for this selection.")
 
     for msg in history:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
     if turns_used >= CHAT_MAX_TURNS:
-        st.warning("Question limit reached for this selection. Change the filters to start "
-                   "a new conversation.")
+        st.warning("Question limit reached for these results. Run a new search to start a "
+                   "new conversation.")
         return
 
     question = st.chat_input(f"Ask about these {agency} {cfg['noun']}...",
@@ -2697,6 +3848,8 @@ def render_agency_chat(agency, frame, matches):
             else:
                 st.markdown(answer)
                 history.append({"role": "assistant", "content": answer})
+                counter.caption(f"{len(history) // 2}/{CHAT_MAX_TURNS} questions used for "
+                                f"this selection.")
 
 
 # ── The agency page ──────────────────────────────────────────────────────────
@@ -2740,8 +3893,202 @@ def _agency_export_bytes(agency, version, index_tuple):
     return buffer.getvalue()
 
 
+def _supports_deferred_download():
+    """Streamlit 1.49+ can build a download's bytes only when it's clicked."""
+    try:
+        import streamlit.elements.widgets.button as _button
+        return "Callable" in str(getattr(_button, "DownloadButtonDataType", ""))
+    except Exception:
+        return False
+
+
+DEFERRED_DOWNLOADS = _supports_deferred_download()
+EAGER_EXPORT_MAX_ROWS = 1500    # older Streamlit: above this, build the file on request
+
+
+def render_download(agency, version, results):
+    """Excel export of exactly the search results, in ranked order. At the full
+    HAS catalogue the file takes ~10s to write, so it's never built just to
+    draw the page: on click where Streamlit supports it, else on request."""
+    cfg = AGENCY_CONFIG[agency]
+    slug = cfg["slug"]
+    index = tuple(results.index)
+    label = f"📥 Download these {len(results):,} as Excel"
+    kwargs = {"file_name": f"{slug}_search_results.xlsx", "mime": XLSX_MIME,
+              "key": f"download_{slug}"}
+    if DEFERRED_DOWNLOADS:
+        st.download_button(label, data=lambda: _agency_export_bytes(agency, version, index),
+                           **kwargs)
+    elif len(results) <= EAGER_EXPORT_MAX_ROWS or st.session_state.get(f"{slug}_export") == index:
+        st.download_button(label, data=_agency_export_bytes(agency, version, index), **kwargs)
+    elif st.button(f"📥 Prepare Excel file ({len(results):,} rows)", key=f"{slug}_prepare"):
+        st.session_state[f"{slug}_export"] = index
+        st.rerun()
+
+
+def _is_narrowed(frame, query):
+    years = query.get("years")
+    bounds = ((int(frame["year"].min()), int(frame["year"].max()))
+              if frame["year"].notna().any() else None)
+    return bool(_text(query.get("drug")) or _text(query.get("condition"))
+                or query.get("areas") or query.get("outcomes") or query.get("procedures")
+                or query.get("orphan") not in (None, "All")
+                or (years and bounds and tuple(int(y) for y in years) != bounds))
+
+
+def render_results_header(agency, frame, results, query, labels, matches):
+    cfg = AGENCY_CONFIG[agency]
+    n, total = len(results), len(frame)
+    if _is_narrowed(frame, query):
+        st.markdown(f"### {n:,} of {total:,} {cfg['noun']} found")
+        split = ""
+        if _text(query.get("drug")) and n:
+            mentioned = int(results["_why"].str.startswith("Drug (mentioned)").sum())
+            if mentioned:
+                split = (f" {n - mentioned:,} are of the drug itself; {mentioned:,} more mention "
+                         f"it — as the comparator, a combination partner or a prior therapy "
+                         f"(see 'Matched on').")
+        st.caption(f"Searched {describe_query(agency, query, labels, frame)}. "
+                   + ("Most relevant first." if (_text(query.get("drug"))
+                                                 or _text(query.get("condition")))
+                      else "Newest first.") + split)
+    else:
+        st.markdown(f"### All {total:,} {cfg['noun']}, newest first")
+        st.caption("No search yet — use the Explorer above to narrow this down.")
+    if not n:
+        return
+    tiles = [(f"{cfg['noun_title']} found", f"{n:,}", None)] + cfg["headlines_fn"](results)
+    # Four tiles fit the page width without truncating; the NICE overlap has its
+    # own section when an agency already fills the row.
+    if len(tiles) < 4:
+        tiles.append(("Same molecule at NICE", f"{_records_matched(matches, 'NICE'):,}/{n:,}",
+                      "Results whose active substance also appears in the NICE data — see "
+                      "'Other HTA bodies'."))
+    for col, (label, value, help_text) in zip(st.columns(len(tiles)), tiles):
+        col.metric(label, value, help=help_text)
+
+
+def _section_nav(slug):
+    key = f"w_{slug}_section"
+    if st.session_state.get(key) not in RESULTS_SECTIONS:
+        st.session_state[key] = RESULTS_SECTIONS[0]
+    if "required" in inspect.signature(st.segmented_control).parameters:
+        choice = st.segmented_control("Results section", RESULTS_SECTIONS, key=key,
+                                      required=True, label_visibility="collapsed")
+    else:
+        choice = st.radio("Results section", RESULTS_SECTIONS, key=key, horizontal=True,
+                          label_visibility="collapsed")
+    return choice or RESULTS_SECTIONS[0]
+
+
+def _results_signature(results):
+    """Changes whenever the search does, so a stale row selection never carries over."""
+    return abs(hash((len(results), tuple(results.index[:200])))) % 10**10
+
+
+def render_results_decisions(agency, version, results, docs, matches, query):
+    cfg = AGENCY_CONFIG[agency]
+    slug = cfg["slug"]
+    top, bottom = st.columns([3, 2])
+    with top:
+        st.caption("Click a row to open its full record below.")
+    with bottom:
+        render_download(agency, version, results)
+
+    table = pd.DataFrame(index=results.index)
+    if _text(query.get("drug")) or _text(query.get("condition")):
+        table["Matched on"] = results["_why"]
+    table["ID"] = results["appraisal_id"]
+    table["Drug"] = results["inn"]
+    table["Brand"] = results["brand"]
+    table["Outcome"] = results["outcome"]
+    table["Decided"] = results["decision_dt"]
+    table["Condition"] = results["condition"]
+    table["Therapy area"] = results["therapy_area_en"]
+    if agency == "G-BA":
+        table["Certainty"] = results["certainty"].fillna("—")
+    else:
+        table["SMR"] = results["SMR_rating"].map(lambda v: _shorten(_text(v), 40)
+                                                 if _text(v) else "—")
+        table["ASMR"] = results["ASMR_rating"].map(lambda v: _shorten(_text(v), 30)
+                                                   if _text(v) else "—")
+        table["Procedure"] = results["procedure_type"]
+    table["Source"] = results["official_source_url"]
+    event = st.dataframe(
+        table.reset_index(drop=True),
+        column_config={
+            "Decided": st.column_config.DateColumn("Decided", format="D MMM YYYY"),
+            "Condition": st.column_config.TextColumn("Condition", width="medium"),
+            "Source": st.column_config.LinkColumn("Source", display_text="Open ↗"),
+        },
+        hide_index=True, width="stretch", height=420, on_select="rerun",
+        selection_mode="single-row", key=f"{slug}_results_{_results_signature(results)}")
+
+    rows = []
+    try:
+        rows = list(event.selection.rows)
+    except Exception:
+        pass
+    position = rows[0] if rows and rows[0] < len(results) else 0
+    row = results.iloc[position]
+    st.divider()
+    st.markdown(f"#### {_md_safe(row['appraisal_id'])} · {_md_safe(row['inn'])}"
+                + (f" ({_md_safe(row['brand'])})" if row["brand"] else ""))
+    if not rows:
+        st.caption("Showing the top result — click any row in the table to open another.")
+    by_record = _matches_by_record(matches[matches["_src"] == row.name])
+    render_agency_record(agency, row, docs, by_record.get(row.name))
+
+
+def render_results_evidence(agency, results, docs):
+    cfg = AGENCY_CONFIG[agency]
+    st.caption(f"What the {len(results):,} {cfg['noun']} your search found say — up to "
+               f"{SYNTHESIS_MAX_ITEMS} per heading, most relevant first. "
+               + _coverage_line(results, docs) + ".")
+    for block in cfg["synthesis_blocks"]:
+        render_synthesis_block(block, results)
+    render_economic_block(results)
+
+
+def render_results_other_bodies(agency, results, matches):
+    """Same molecule at NICE and the other agency. Widely appraised molecules
+    (pembrolizumab has dozens of NICE TAs) would swamp the table, so by default
+    each result shows only its closest-indication matches."""
+    cfg = AGENCY_CONFIG[agency]
+    per_record = 3
+    show_all = False
+    if len(matches) and matches.groupby("_src").size().max() > per_record:
+        show_all = st.checkbox(
+            f"Show every same-molecule match (default: the {per_record} closest indications "
+            f"per result)", key=f"w_{cfg['slug']}_all_matches")
+    shown = matches if show_all else matches.groupby("_src", sort=False).head(per_record)
+    if not len(shown):
+        st.info("None of these molecules appear at another HTA body in this workbook yet.")
+        return
+    source = results.loc[shown["_src"]]
+    comparison = pd.DataFrame({
+        "Molecule": source["inn"].to_numpy(),
+        f"{agency} ID": source["appraisal_id"].to_numpy(),
+        f"{agency} outcome": source["outcome"].to_numpy(),
+        "Other body": [f"{AGENCY_FLAGS.get(b, '')} {b}" for b in shown["body"]],
+        "Other ID": shown["appraisal_id"].to_numpy(),
+        "Other decision": shown["decision"].to_numpy(),
+        "Other drug / regimen": shown["drug"].to_numpy(),
+        "Other indication": shown["indication"].to_numpy(),
+        "When": shown["when"].to_numpy(),
+        "Link": shown["url"].to_numpy(),
+    })
+    st.markdown(f"**{_records_matched(matches):,} of {len(results):,}** results have a "
+                f"decision on the same active substance at another HTA body.")
+    st.dataframe(comparison,
+                 column_config={"Link": st.column_config.LinkColumn("Link", display_text="Open ↗")},
+                 width="stretch", hide_index=True)
+    st.caption(CROSS_AGENCY_CAVEAT)
+
+
 def render_agency_view(agency):
     cfg = AGENCY_CONFIG[agency]
+    slug = cfg["slug"]
     version = data_version()
     frame = prepare_agency_frame(agency, version)
 
@@ -2760,15 +4107,14 @@ def render_agency_view(agency):
     if total < SMALL_AGENCY_SET:
         st.info(f"Small dataset so far — {total} {cfg['noun']}. Counts, charts and patterns "
                 f"below are illustrative until more {agency} decisions are loaded.")
-
     with st.expander("Scope & methodology — read before comparing with NICE"):
         st.markdown(cfg["methodology_md"])
         documented = int(frame["appraisal_id"].astype(str).isin(set(docs["Appraisal_ID"])).sum())
         st.markdown(
-            f"**Coverage.** {total} {cfg['noun']} dated {_date_span(frame['decision_dt'])} · "
-            f"{len(docs)} official source documents indexed for {documented} of them · the "
+            f"**Coverage.** {total:,} {cfg['noun']} dated {_date_span(frame['decision_dt'])} · "
+            f"{len(docs):,} official source documents indexed for {documented:,} of them · the "
             f"same active substance also appears in the NICE data for "
-            f"{_records_matched(all_matches, 'NICE')} of {total}.")
+            f"{_records_matched(all_matches, 'NICE'):,} of {total:,}.")
         for note in frame["methodology_note"].map(_text).dropna().unique():
             st.caption(f"Workbook methodology note: {_md_safe(note)}")
         log = load_enrichment_log(data_version())
@@ -2780,138 +4126,30 @@ def render_agency_view(agency):
                 st.markdown("**Enrichment log**")
                 st.dataframe(rows.astype(str), width="stretch", hide_index=True)
 
-    st.divider()
-
-    filtered = agency_sidebar_filters(agency, frame)
-    matches = all_matches[all_matches["_src"].isin(filtered.index)]
-
-    # Metrics — one card per outcome on this agency's scale, like the NICE view
-    st.metric(f"Total {cfg['noun_title']}", len(filtered))
-    outcomes = outcome_order(agency, frame)
-    for col, outcome in zip(st.columns(len(outcomes)), outcomes):
-        col.metric(outcome, int((filtered["outcome"] == outcome).sum()))
-    n = len(filtered)
-    headlines = cfg["headlines_fn"](filtered) + [(
-        "Same molecule appraised by NICE", f"{_records_matched(matches, 'NICE')}/{n}",
-        "Selected records whose active substance also appears in the NICE data — see "
-        "'Same molecule at other HTA bodies' below.")]
-    for col, (label, value, help_text) in zip(st.columns(len(headlines)), headlines):
-        col.metric(label, value, help=help_text)
+    agency_sidebar_guide(agency)
+    query = render_agency_explorer(agency, frame)
+    results, labels = cached_agency_search(agency, version, query)
+    matches = all_matches[all_matches["_src"].isin(results.index)]
 
     st.divider()
-
-    st.download_button(
-        "📥 Download Filtered Results",
-        data=_agency_export_bytes(agency, version, tuple(filtered.index)),
-        file_name=f"{cfg['slug']}_filtered.xlsx",
-        mime=XLSX_MIME,
-        key=f"download_{cfg['slug']}",
-    )
-    st.caption(f"Showing {n:,} of {total:,} {cfg['noun']}")
-
-    if filtered.empty:
-        st.info("No records match the current filters.")
+    render_results_header(agency, frame, results, query, labels, matches)
+    if results.empty:
+        st.warning("Nothing matches that search. Try a broader condition (e.g. 'lymphoma' "
+                   "rather than a subtype), fewer ticked boxes, or a wider year range.")
         _agency_footer(agency, total)
         return
 
-    # Outcome sits next to the drug: the indication text is long enough to push
-    # anything after it off-screen.
-    table = pd.DataFrame({
-        "ID": filtered["appraisal_id"],
-        "Drug (INN)": filtered["inn"],
-        "Brand": filtered["brand"],
-        "Outcome": filtered["outcome"],
-        "Decision date": filtered["decision_dt"],
-        "Indication": filtered["indication"],
-        "Therapy Area": filtered["therapeutic_area"],
-    })
-    # The recorded wording is always worth seeing next to an 'Unclassified' bucket.
-    if cfg["show_recorded_decision"] or filtered["outcome"].eq("Unclassified").any():
-        table["Decision (as recorded)"] = filtered["decision_simple"]
-    for col, label in cfg["table_extra"]:
-        if filtered[col].map(_substantive).notna().any():
-            table[label] = filtered[col].map(lambda v: _text(v) or "—")
-    table["Source"] = filtered["official_source_url"]
-    st.dataframe(
-        table,
-        column_config={
-            "Decision date": st.column_config.DateColumn("Decision date", format="D MMM YYYY"),
-            "Indication": st.column_config.TextColumn("Indication", width="large"),
-            "Source": st.column_config.LinkColumn("Source", display_text="Open ↗"),
-        },
-        width="stretch", hide_index=True,
-    )
-
-    # Detail
-    by_record = _matches_by_record(matches)
-    st.divider()
-    st.subheader(cfg["detail_title"])
-    labels = pd.Series(
-        [f"{i} ({b})" if b else i for i, b in zip(filtered["inn"], filtered["brand"])],
-        index=filtered.index)
-    options = sorted(labels.unique(), key=str.lower)
-    selected = st.selectbox("Select a drug", options, key=f"select_{cfg['slug']}_drug")
-    chosen = filtered[labels == selected].sort_values("decision_dt", ascending=False)
-    for idx, row in chosen.iterrows():
-        with st.expander(f"{_md_safe(row['appraisal_id'])} — "
-                         f"{_md_safe(_shorten(row['indication'], 110))}",
-                         expanded=len(chosen) == 1):
-            render_agency_record(agency, row, docs, by_record.get(idx))
-
-    # Analysis
-    st.divider()
-    st.subheader("📊 Analysis")
-    render_agency_charts(agency, filtered, frame)
-
-    # Evidence synthesis
-    st.divider()
-    st.subheader("🔎 Evidence Synthesis")
-    st.markdown(f"*What the {n} {cfg['noun']} in the current selection say. Narrow it with "
-                f"the sidebar search (e.g. {cfg['search_examples']}) to synthesise one "
-                f"indication.*")
-    st.caption(_coverage_line(filtered, docs))
-    for block in cfg["synthesis_blocks"]:
-        render_synthesis_block(block, filtered)
-    render_economic_block(filtered)
-
-    # Same molecule across agencies. Widely appraised molecules (pembrolizumab
-    # has dozens of NICE TAs) would swamp the table, so by default each record
-    # shows only its closest-indication matches.
-    st.divider()
-    st.subheader("🌍 Same Molecule at Other HTA Bodies")
-    per_record = 3
-    show_all = False
-    if len(matches) and matches.groupby("_src").size().max() > per_record:
-        show_all = st.checkbox(
-            f"Show every same-molecule match (default: the {per_record} closest indications "
-            f"per record)", key=f"w_{cfg['slug']}_all_matches")
-    shown = matches if show_all else matches.groupby("_src", sort=False).head(per_record)
-    if len(shown):
-        source = filtered.loc[shown["_src"]]
-        comparison = pd.DataFrame({
-            "Molecule": source["inn"].to_numpy(),
-            f"{agency} ID": source["appraisal_id"].to_numpy(),
-            f"{agency} outcome": source["outcome"].to_numpy(),
-            "Other body": [f"{AGENCY_FLAGS.get(b, '')} {b}" for b in shown["body"]],
-            "Other ID": shown["appraisal_id"].to_numpy(),
-            "Other drug / regimen": shown["drug"].to_numpy(),
-            "Other decision": shown["decision"].to_numpy(),
-            "Other indication": shown["indication"].to_numpy(),
-            "When": shown["when"].to_numpy(),
-            "Link": shown["url"].to_numpy(),
-        })
-        st.markdown(f"**{_records_matched(matches)} of {n}** selected {cfg['noun']} have an "
-                    f"appraisal of the same active substance at another HTA body.")
-        st.dataframe(
-            comparison,
-            column_config={"Link": st.column_config.LinkColumn("Link", display_text="Open ↗")},
-            width="stretch", hide_index=True,
-        )
-        st.caption(CROSS_AGENCY_CAVEAT)
+    section = _section_nav(slug)
+    if section == "📋 Decisions":
+        render_results_decisions(agency, version, results, docs, matches, query)
+    elif section == "📊 Analysis":
+        render_agency_charts(agency, results)
+    elif section == "🧾 Evidence":
+        render_results_evidence(agency, results, docs)
+    elif section == "🌍 Other HTA bodies":
+        render_results_other_bodies(agency, results, matches)
     else:
-        st.info("None of the selected molecules appear at another HTA body in this workbook yet.")
-
-    render_agency_chat(agency, filtered, matches)
+        render_agency_chat(agency, results, matches)
     _agency_footer(agency, total)
 
 
