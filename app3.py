@@ -2000,6 +2000,42 @@ AGENCY_BASE_COLUMNS = [
 ]
 
 
+_GBA_AREA_SUFFIX = re.compile(r"\(([^()]+)\)\s*$")
+
+
+def _broad_area(agency, raw):
+    """
+    Bucket a raw therapeutic_area value into something a sidebar checklist
+    and a bar chart can actually show.
+
+    NICE's therapeutic_area is already a curated ~17-value vocabulary. G-BA
+    and HAS values are far more granular free text — 465 and 1,072 distinct
+    strings respectively across the full catalogue, which is closer to one
+    per specific indication than per broad area. Left as the raw text, both
+    the "Therapy area" sidebar filter and the "Outcome by therapy area"
+    chart tried to show hundreds of one-row entries — an unreadable,
+    multi-thousand-pixel-tall chart and an unusable checklist.
+
+    Both sources do encode a real broad category, just differently. G-BA
+    appends it as a trailing parenthetical: 'Melanom (onkologische
+    Erkrankungen)' -> 'onkologische Erkrankungen'. HAS lists one or more
+    'System/Specific' pairs separated by ';' for multi-system indications:
+    'Système nerveux/Maladies neurodégénératives; Vaisseaux sanguins/...'
+    -> the first pair's system, 'Système nerveux'. Extracting that collapses
+    G-BA to 20 buckets and HAS to 26 on the real catalogue — a handful of
+    legacy rows that use neither convention (e.g. a bare 'Oncology') just
+    fall back to their own text unchanged, same as before.
+    """
+    text = _text(raw) or "Not classified"
+    if agency == "G-BA":
+        m = _GBA_AREA_SUFFIX.search(text)
+        return m.group(1).strip() if m else text
+    if agency == "HAS":
+        first_system = text.split(";")[0].strip()
+        return first_system.split("/")[0].strip()
+    return text.split(" / ")[0].strip()
+
+
 @st.cache_data
 def prepare_agency_frame(agency, version):
     """One agency's sheet with the columns every view relies on added:
@@ -2043,9 +2079,7 @@ def prepare_agency_frame(agency, version):
         frame[name] = frame.apply(fn, axis=1)
     frame["favourable"] = frame.apply(cfg["favourable_fn"], axis=1)
 
-    frame["area_broad"] = [
-        (_text(a) or "Not classified").split(" / ")[0].strip() for a in frame["therapeutic_area"]
-    ]
+    frame["area_broad"] = [_broad_area(agency, a) for a in frame["therapeutic_area"]]
     blob_cols = ("appraisal_id", "inn", "brand", "drug_name", "indication", "therapeutic_area")
     frame["search_blob"] = [
         " | ".join(_text(v) or "" for v in values).lower()
@@ -2247,8 +2281,8 @@ def agency_sidebar_filters(agency, frame):
     areas = sorted(frame["area_broad"].dropna().unique(), key=str.lower)
     selected_areas = st.sidebar.multiselect(
         "Therapy area", areas, key=f"w_{slug}_areas",
-        help="Leave empty to include all areas. Grouped on the first part of the workbook "
-             "label (e.g. 'Oncology / haematology' → Oncology).",
+        help="Leave empty to include all areas. Grouped on the workbook's broad category for "
+             f"{agency} (its own disease-area tag, not the specific indication).",
     )
     selected_outcomes = st.sidebar.multiselect(
         "Outcome", outcome_order(agency, frame), key=f"w_{slug}_outcomes",
@@ -2477,12 +2511,31 @@ def render_agency_charts(agency, frame, full_frame):
             st.plotly_chart(fig, width="stretch", key=f"{cfg['slug']}_over_time")
 
     st.markdown("**Outcome by therapy area**")
-    by_area = frame.groupby(["area_broad", "outcome"]).size().reset_index(name="count")
+    MAX_AREA_BARS = 25
+    area_totals = frame["area_broad"].value_counts()
+    if len(area_totals) > MAX_AREA_BARS:
+        # A defensive cap, not just a cosmetic one: area_broad is derived from
+        # each agency's own free-text category field (see _broad_area), and a
+        # future data refresh could reintroduce hundreds of near-unique
+        # values the way the raw, un-bucketed field once did — a chart whose
+        # height scales with category count turns that straight into an
+        # unreadable, multi-thousand-pixel page. Keeping only the largest
+        # categories and folding the rest into "Other" keeps the chart a
+        # fixed, readable size no matter how the upstream category field
+        # behaves.
+        kept = set(area_totals.head(MAX_AREA_BARS).index)
+        st.caption(f"Showing the {MAX_AREA_BARS} largest of {len(area_totals)} therapy areas — "
+                   f"the rest are folded into 'Other'. Use the sidebar filter for a specific one.")
+        area_col = frame["area_broad"].where(frame["area_broad"].isin(kept), "Other")
+    else:
+        area_col = frame["area_broad"]
+    by_area = (frame.assign(area_broad=area_col)
+               .groupby(["area_broad", "outcome"]).size().reset_index(name="count"))
     fig = px.bar(by_area, x="count", y="area_broad", color="outcome", orientation="h",
                  color_discrete_map=colors, category_orders={"outcome": order})
     fig.update_layout(barmode="stack", yaxis={"categoryorder": "total ascending"},
                       yaxis_title=None, xaxis_title="Count", legend_title=None, bargap=0.45,
-                      height=max(260, 48 * by_area["area_broad"].nunique() + 140))
+                      height=max(260, 32 * by_area["area_broad"].nunique() + 140))
     _integer_axis(fig, "x", by_area.groupby("area_broad")["count"].sum().max())
     st.plotly_chart(fig, width="stretch", key=f"{cfg['slug']}_by_area")
 
