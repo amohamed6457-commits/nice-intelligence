@@ -41,9 +41,15 @@ INDEX_PATHS = [
     os.path.join(_HERE, "hta_index", "keyword_index.json"),
 ]
 
-# Roughly 15k tokens of committee text. Generous but bounded.
-DEFAULT_BUDGET = 60_000
+# Roughly 20k tokens of committee text. Generous but bounded.
+DEFAULT_BUDGET = 80_000
 MAX_SECTIONS_PER_APPRAISAL = 6
+
+# Spreading the budget across every retrieved appraisal truncates nearly every
+# section mid-sentence, and a quote that stops before the committee's
+# conclusion is worse than no quote. Sections go to the most relevant
+# appraisals only; the rest are still present as their Excel rows.
+MAX_APPRAISALS_WITH_SECTIONS = 14
 
 _CACHE = {"loaded": False, "by_ta": {}, "error": None}
 
@@ -93,6 +99,9 @@ def load_index():
             "headline": md.get("headline", ""),
             "theme": md.get("theme", ""),
             "tier": md.get("source_tier", "chapter"),
+            # The element id doubles as the page anchor, so a citation can
+            # deep-link to the exact paragraph on nice.org.uk.
+            "anchor": md.get("anchor", ""),
             "url": md.get("url", ""),
             "text": rec.get("text", ""),
         })
@@ -192,7 +201,15 @@ def format_for_context(appraisal_id, question="", char_budget=12_000,
             break
         text = s["text"]
         if len(text) > room:
-            text = text[:room].rsplit(" ", 1)[0] + " [truncated]"
+            # Prefer dropping a section to cutting it mid-sentence: a quote
+            # that stops before the committee's conclusion misleads. Only the
+            # genuinely huge sections get trimmed, and then at a sentence end.
+            if room < 1500:
+                continue
+            cut = text[:room]
+            stop = max(cut.rfind(". "), cut.rfind(".\n"))
+            text = (cut[:stop + 1] if stop > room * 0.5
+                    else cut.rsplit(" ", 1)[0]) + " [section continues]"
         lines.append(f"{head}\n    {text}")
         used += len(head) + len(text) + 6
     if not lines:
@@ -218,7 +235,21 @@ def augment_context(context, appraisal_ids, question="", budget=DEFAULT_BUDGET):
     if not tas:
         return context
 
-    per = max(1200, budget // max(1, len(tas)))
+    n_indexed = len(tas)
+
+    # Rank by how well an appraisal's best section answers the question, then
+    # keep only the strongest. Complete quotes from a dozen appraisals beat
+    # truncated ones from sixty.
+    terms = [t for t in re.findall(r"[a-z0-9]+", (question or "").lower())
+             if len(t) > 2 and t not in _STOP]
+    if terms and len(tas) > MAX_APPRAISALS_WITH_SECTIONS:
+        def best(ta):
+            return max((_score(s, terms) for s in idx[ta]), default=0)
+        tas = sorted(tas, key=best, reverse=True)[:MAX_APPRAISALS_WITH_SECTIONS]
+    else:
+        tas = tas[:MAX_APPRAISALS_WITH_SECTIONS]
+
+    per = max(3000, budget // max(1, len(tas)))
     blocks = []
     for ta in tas:
         block = format_for_context(ta, question, char_budget=per)
@@ -229,9 +260,14 @@ def augment_context(context, appraisal_ids, question="", budget=DEFAULT_BUDGET):
         return context
 
     n_with, n_total = coverage(appraisal_ids)
+    shown = len(blocks)
+    scope = (f"{shown} of the {n_total} appraisals above"
+             if shown >= n_indexed else
+             f"the {shown} most relevant of the {n_with} indexed appraisals above "
+             f"(of {n_total} retrieved)")
     header = (
-        "\n\nCommittee discussion sections, for the appraisals above that have "
-        f"them ({n_with} of {n_total}). These are the committee's own published "
+        "\n\nCommittee discussion sections, for "
+        f"{scope}. These are the committee's own published "
         "words. Quote them directly and cite as [TA<number> section <N.N>]. "
         "For appraisals without sections here, cite the appraisal alone and do "
         "not invent a section number."
@@ -250,3 +286,115 @@ When committee discussion sections are supplied:
 - Keep the company's argument, the EAG/ERG's critique and the committee's
   conclusion distinct. They are routinely confused and the difference matters.
 """
+
+
+# ---------------------------------------------------------------- source panel
+# Everything below supports showing a cited section beside the answer. Kept
+# free of Streamlit so it stays testable; the app does the rendering.
+
+CITATION_RE = re.compile(
+    r"\[TA\s*(\d+)[,\s]*(?:§|sections?|s\.)\s*(\d+\.\d+)\]", re.IGNORECASE)
+
+
+def parse_citations(text):
+    """Citations in an answer, in order of appearance, deduplicated.
+
+    Accepts the forms the model actually produces: [TA993 section 3.13],
+    [TA993 §3.13], [TA993, section 3.13].
+    """
+    seen, out = set(), []
+    for ta, section in CITATION_RE.findall(text or ""):
+        ta = ta.lstrip("0") or "0"
+        if (ta, section) not in seen:
+            seen.add((ta, section))
+            out.append((ta, section))
+    return out
+
+
+def get_section(appraisal_id, section):
+    """One specific section, or None."""
+    ta = _norm_ta(appraisal_id)
+    if not ta:
+        return None
+    for s in load_index().get(ta, []):
+        if s["section"] == section:
+            return s
+    return None
+
+
+def neighbours(appraisal_id, section, span=1):
+    """Adjacent sections, so a quote can be read in context."""
+    ta = _norm_ta(appraisal_id)
+    if not ta or "." not in section:
+        return []
+    chapter, number = section.split(".", 1)
+    if not number.isdigit():
+        return []
+    out = []
+    for delta in range(-span, span + 1):
+        if delta == 0:
+            continue
+        n = int(number) + delta
+        if n < 1:
+            continue
+        found = get_section(ta, f"{chapter}.{n}")
+        if found:
+            out.append(found)
+    return out
+
+
+def quoted_spans(answer):
+    """Every quoted passage in an answer, straight or curly quotes."""
+    return re.findall(r"[“\"]([^”\"]{20,600})[”\"]", answer or "")
+
+
+def mark_quotes(text, answer, marker="**"):
+    """Wrap any part of `text` the answer quoted.
+
+    Quotes are routinely elided ("too much uncertainty ... preferred ICER"),
+    so each fragment between ellipses is located separately - extending from
+    the start by the quote's length would end mid-word.
+    """
+    fragments = []
+    for quote in quoted_spans(answer):
+        for frag in re.split(r"…|\.\.\.|\[[^\]]*\]", quote):
+            frag = frag.strip(" .,;:…")
+            if len(frag) >= 25:
+                fragments.append(frag)
+    if not fragments:
+        return text
+
+    spans, low = [], text.lower()
+    for frag in fragments:
+        i = low.find(frag.lower())
+        if i >= 0:
+            spans.append((i, i + len(frag)))
+            continue
+        loose = re.sub(r"\\\s+", r"\\s+", re.escape(frag.lower()))
+        m = re.search(loose, low)
+        if m:
+            spans.append(m.span())
+    if not spans:
+        return text
+
+    spans.sort()
+    merged = [spans[0]]
+    for a, b in spans[1:]:
+        if a <= merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], b))
+        else:
+            merged.append((a, b))
+
+    out = text
+    for a, b in reversed(merged):
+        out = out[:a] + marker + out[a:b] + marker + out[b:]
+    return out
+
+
+def section_url(appraisal_id, section, anchor=None):
+    """Deep link to the paragraph on nice.org.uk."""
+    ta = _norm_ta(appraisal_id)
+    chapter = section.split(".")[0] if "." in section else "3"
+    frag = f"#{anchor}" if anchor else ""
+    return (f"https://www.nice.org.uk/guidance/ta{ta}/chapter/"
+            f"{chapter}-Committee-discussion{frag}")

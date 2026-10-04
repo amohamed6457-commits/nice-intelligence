@@ -376,6 +376,52 @@ def resolve_keyword(keyword):
 
 # Grounded chat over the retrieved comparator set
 
+
+def render_source_panel():
+    """Right-hand pane: the cited committee section, with the quoted span
+    marked and a deep link to that paragraph on nice.org.uk.
+
+    The live NICE page cannot be embedded and highlighted - a cross-origin
+    iframe is sealed off from the embedding page - so the indexed text is
+    rendered here instead and the link opens the real page at the anchor.
+    """
+    selection = st.session_state.get("nice_source")
+    if not selection:
+        if nice_sections.available():
+            st.caption("Click a source below an answer to read the committee's "
+                       "own words here.")
+        return
+
+    ta, section, msg_index = selection
+    found = nice_sections.get_section(ta, section)
+    if not found:
+        st.warning(f"TA{ta} section {section} is not in the index.")
+        return
+
+    st.markdown(f"**TA{ta} · section {section}**")
+    if found.get("theme"):
+        st.caption(found["theme"])
+    if found.get("headline"):
+        st.markdown(f"*{found['headline']}*")
+    st.divider()
+
+    history = st.session_state.get("chat_history", [])
+    answer = (history[msg_index].get("content", "")
+              if 0 <= msg_index < len(history) else "")
+    st.markdown(nice_sections.mark_quotes(found["text"], answer))
+
+    st.markdown("[Read this paragraph on nice.org.uk]"
+                f"({nice_sections.section_url(ta, section, found.get('anchor'))})")
+
+    context_sections = nice_sections.neighbours(ta, section)
+    if context_sections:
+        with st.expander(f"Sections either side ({len(context_sections)})"):
+            for neighbour in context_sections:
+                st.markdown(f"**{neighbour['section']}** — {neighbour['headline']}")
+                body = neighbour["text"]
+                st.caption(body[:500] + ("…" if len(body) > 500 else ""))
+
+
 CHAT_MODEL = "claude-sonnet-5"
 CHAT_MAX_TURNS = 8
 CHAT_MAX_CONTEXT_ROWS = 60   # safety ceiling only — normally the full retrieved set
@@ -4577,6 +4623,7 @@ if st.button("Retrieve Comparable Appraisals", type="primary"):
     if new_signature != st.session_state.chat_signature:
         st.session_state.chat_history = []
         st.session_state.chat_signature = new_signature
+        st.session_state.pop("nice_source", None)   # the cited section is stale too
 
 if st.session_state.hta_query_ran:
     if not indication:
@@ -5393,9 +5440,26 @@ Possible next steps:
         turns_used = len(st.session_state.chat_history) // 2
         st.caption(f"{turns_used}/{CHAT_MAX_TURNS} questions used for this query.")
 
-        for msg in st.session_state.chat_history:
-            with st.chat_message(msg["role"]):
-                st.markdown(msg["content"])
+        _chat_col, _source_col = st.columns([1.3, 1], gap="large")
+
+        with _chat_col:
+            for _mi, msg in enumerate(st.session_state.chat_history):
+                with st.chat_message(msg["role"]):
+                    st.markdown(msg["content"])
+                    if msg["role"] != "assistant":
+                        continue
+                    _cites = nice_sections.parse_citations(msg["content"])
+                    if not _cites:
+                        continue
+                    st.caption("Sources")
+                    for _ci, (_cta, _csec) in enumerate(_cites):
+                        if st.button(f"TA{_cta} · section {_csec}",
+                                     key=f"nice_cite_{_mi}_{_ci}"):
+                            st.session_state.nice_source = (_cta, _csec, _mi)
+                            st.rerun()
+
+        with _source_col:
+            render_source_panel()
 
         if turns_used >= CHAT_MAX_TURNS:
             st.warning(
