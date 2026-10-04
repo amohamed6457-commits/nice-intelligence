@@ -40,9 +40,34 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-# Committee discussion sections for the NICE chat. Self-contained and
-# optional: with no index built it is inert and the app behaves as before.
-import nice_chapters
+# Committee discussion sections for the NICE chat. Entirely optional: if the
+# module or its index is absent - a deployment that did not ship them, say -
+# the app must still run exactly as it did before, so the import cannot be
+# allowed to fail hard.
+try:
+    import nice_sections
+    # A directory of the same name on sys.path imports as an EMPTY namespace
+    # package rather than raising, so a successful import is not proof the
+    # real module loaded. Touch an attribute to find out.
+    nice_sections.CITATION_RULES
+except (ImportError, AttributeError):
+    class _NoChapters:
+        """Stand-in so a missing nice_sections.py cannot take the app down."""
+        CITATION_RULES = ""
+
+        @staticmethod
+        def augment_context(context, *_args, **_kwargs):
+            return context
+
+        @staticmethod
+        def available():
+            return False
+
+        @staticmethod
+        def status():
+            return "Committee sections: nice_sections.py not deployed"
+
+    nice_sections = _NoChapters()
 
 DATA_FILE = "NICE_v14_updated_2026-09-29.xlsx"
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -372,7 +397,7 @@ If asked to predict an outcome, say that's outside what this data can support.""
 
 # Extends rule 4 (cite by TA ID) down to section level when committee
 # discussion sections are present in the context.
-CHAT_SYSTEM_PROMPT += nice_chapters.CITATION_RULES
+CHAT_SYSTEM_PROMPT += nice_sections.CITATION_RULES
 
 def classify_historical_icer(row):
     lower = row.get("icer_lower")
@@ -5386,7 +5411,7 @@ Possible next steps:
                     threshold, comparator)
                 # Deepens the existing retrieved set with the committee's own
                 # words; returns the context untouched if nothing is indexed.
-                context = nice_chapters.augment_context(
+                context = nice_sections.augment_context(
                     context, similar["appraisal_id"], user_question)
                 with st.chat_message("assistant"):
                     with st.spinner("Checking the retrieved precedent..."):
