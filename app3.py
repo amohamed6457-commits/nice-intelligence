@@ -48,8 +48,11 @@ try:
     import nice_sections
     # A directory of the same name on sys.path imports as an EMPTY namespace
     # package rather than raising, so a successful import is not proof the
-    # real module loaded. Touch an attribute to find out.
-    nice_sections.CITATION_RULES
+    # real module loaded. Check for a known attribute instead.
+    # NB: must not be a bare expression - Streamlit's magic would render it
+    # on the page.
+    if not hasattr(nice_sections, "CITATION_RULES"):
+        raise ImportError("nice_sections resolved to a namespace package")
 except (ImportError, AttributeError):
     class _NoChapters:
         """Stand-in so a missing nice_sections.py cannot take the app down."""
