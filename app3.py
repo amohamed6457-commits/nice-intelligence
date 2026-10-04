@@ -40,6 +40,10 @@ from reportlab.platypus import (
     TableStyle,
 )
 
+# Committee discussion sections for the NICE chat. Self-contained and
+# optional: with no index built it is inert and the app behaves as before.
+import nice_chapters
+
 DATA_FILE = "NICE_v14_updated_2026-09-29.xlsx"
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
@@ -366,6 +370,10 @@ checked against the source.
 6. This is a descriptive summary of retrieved precedent, not a prediction of a NICE decision. \
 If asked to predict an outcome, say that's outside what this data can support."""
 
+# Extends rule 4 (cite by TA ID) down to section level when committee
+# discussion sections are present in the context.
+CHAT_SYSTEM_PROMPT += nice_chapters.CITATION_RULES
+
 def classify_historical_icer(row):
     lower = row.get("icer_lower")
     upper = row.get("icer_upper")
@@ -508,7 +516,7 @@ def ask_chat(api_key, context, history, question, system_prompt=None):
             },
             json={
                 "model": CHAT_MODEL,
-                "max_tokens": 1000,
+                "max_tokens": 2000,
                 "system": ((system_prompt or CHAT_SYSTEM_PROMPT)
                            + "\n\n--- Retrieved precedent data ---\n" + context),
                 "messages": messages,
@@ -5376,6 +5384,10 @@ Possible next steps:
                 context = build_chat_context(
                     similar, drug_name, indication, icer_provided, cost_display,
                     threshold, comparator)
+                # Deepens the existing retrieved set with the committee's own
+                # words; returns the context untouched if nothing is indexed.
+                context = nice_chapters.augment_context(
+                    context, similar["appraisal_id"], user_question)
                 with st.chat_message("assistant"):
                     with st.spinner("Checking the retrieved precedent..."):
                         answer, error = ask_chat(
