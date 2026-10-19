@@ -48,9 +48,7 @@ try:
     import nice_sections
     # A directory of the same name on sys.path imports as an EMPTY namespace
     # package rather than raising, so a successful import is not proof the
-    # real module loaded. Check for a known attribute instead.
-    # NB: must not be a bare expression - Streamlit's magic would render it
-    # on the page.
+    # real module loaded. Touch an attribute to find out.
     if not hasattr(nice_sections, "CITATION_RULES"):
         raise ImportError("nice_sections resolved to a namespace package")
 except (ImportError, AttributeError):
@@ -71,6 +69,113 @@ except (ImportError, AttributeError):
             return "Committee sections: nice_sections.py not deployed"
 
     nice_sections = _NoChapters()
+
+# --- committee quotes (optional) ---------------------------------------
+# Checked by attribute, not by a bare import: a module whose name collides
+# with a directory imports as an empty namespace package, which succeeds and
+# then fails on first use.
+try:
+    import committee_quotes
+    if not hasattr(committee_quotes, "render_theme_evidence"):
+        raise ImportError("committee_quotes resolved to a namespace package")
+except (ImportError, AttributeError):
+    class _NoQuotes:
+        @staticmethod
+        def available():
+            return False
+
+        # Same strictness as the real module. A weak test here would make
+        # the degraded path reproduce the exact bug this patch removes:
+        # "Negative recommendation." quoted as committee reasoning.
+        _STUB_RE = re.compile(
+            r"^\W*((negative|positive|favourable|unfavourable)\s+recommendation"
+            r"|not?\s+recommend(ed|ation)?|recommend(ed|ation)?"
+            r"|(terminated|withdrawn|discontinued)(\s+\w+)?"
+            r"|rejected|approved|restricted|see\s+(full\s+)?guidance"
+            r"|n/?a|none|unknown"
+            r"|not\s+(applicable|specified|recorded|stated|available))\W*$",
+            re.IGNORECASE)
+
+        @staticmethod
+        def is_stub(text):
+            if text is None:
+                return True
+            s = str(text).strip()
+            if not s or s.lower() == "nan":
+                return True
+            # Over ~90 chars it is a sentence, not a label.
+            return len(s) <= 90 and bool(_NoQuotes._STUB_RE.match(s))
+
+        @staticmethod
+        def _trim(text, limit):
+            # Never mid-word: a quote ending "were not acce" reads as a bug
+            # even when the underlying text is complete.
+            s = str(text).strip()
+            if len(s) <= limit:
+                return s
+            w = s[:limit]
+            end = max(w.rfind(". "), w.rfind("? "), w.rfind("! "))
+            if end > limit * 0.6:
+                return w[: end + 1]
+            return w.rsplit(" ", 1)[0].rstrip(",;:") + " …"
+
+        @staticmethod
+        def render_theme_evidence(appraisal_id, theme_label,
+                                  fallback_text=None, fallback_chars=1600,
+                                  **kw):
+            import streamlit as _st
+            _st.markdown(f"**{appraisal_id}**")
+            if fallback_text and not _NoQuotes.is_stub(fallback_text):
+                _st.markdown(f"> {_NoQuotes._trim(fallback_text, fallback_chars)}")
+                return True
+            _st.caption("No committee text available for this theme.")
+            return False
+
+    committee_quotes = _NoQuotes()
+
+# --- evidence attributes (optional) ------------------------------------
+# A module whose name matches a data file or directory can import as an empty
+# namespace package, which succeeds and then fails on first use. So check for
+# a known attribute rather than trusting the import.
+# NB: must not be written as a bare expression - Streamlit's magic would
+# render it to the page.
+try:
+    import nice_attributes
+    if not hasattr(nice_attributes, "FIELDS"):
+        raise ImportError("nice_attributes resolved to a namespace package")
+except (ImportError, AttributeError):
+    class _NoAttributes:
+        FIELDS = []
+
+        @staticmethod
+        def available():
+            return False
+
+        @staticmethod
+        def attach(frame, *a, **k):
+            return frame, 0
+
+        @staticmethod
+        def sidebar_filters(*a, **k):
+            return {}, {}
+
+        @staticmethod
+        def apply_filters(frame, *a, **k):
+            return frame
+
+        @staticmethod
+        def render_panel(*a, **k):
+            return None
+
+        @staticmethod
+        def render_status_caption(*a, **k):
+            return None
+
+        @staticmethod
+        def coverage(ids):
+            return 0, len(list(ids))
+
+    nice_attributes = _NoAttributes()
 
 DATA_FILE = "NICE_v14_updated_2026-09-29.xlsx"
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -375,52 +480,6 @@ def resolve_keyword(keyword):
 
 
 # Grounded chat over the retrieved comparator set
-
-
-def render_source_panel():
-    """Right-hand pane: the cited committee section, with the quoted span
-    marked and a deep link to that paragraph on nice.org.uk.
-
-    The live NICE page cannot be embedded and highlighted - a cross-origin
-    iframe is sealed off from the embedding page - so the indexed text is
-    rendered here instead and the link opens the real page at the anchor.
-    """
-    selection = st.session_state.get("nice_source")
-    if not selection:
-        if nice_sections.available():
-            st.caption("Click a source below an answer to read the committee's "
-                       "own words here.")
-        return
-
-    ta, section, msg_index = selection
-    found = nice_sections.get_section(ta, section)
-    if not found:
-        st.warning(f"TA{ta} section {section} is not in the index.")
-        return
-
-    st.markdown(f"**TA{ta} · section {section}**")
-    if found.get("theme"):
-        st.caption(found["theme"])
-    if found.get("headline"):
-        st.markdown(f"*{found['headline']}*")
-    st.divider()
-
-    history = st.session_state.get("chat_history", [])
-    answer = (history[msg_index].get("content", "")
-              if 0 <= msg_index < len(history) else "")
-    st.markdown(nice_sections.mark_quotes(found["text"], answer))
-
-    st.markdown("[Read this paragraph on nice.org.uk]"
-                f"({nice_sections.section_url(ta, section, found.get('anchor'))})")
-
-    context_sections = nice_sections.neighbours(ta, section)
-    if context_sections:
-        with st.expander(f"Sections either side ({len(context_sections)})"):
-            for neighbour in context_sections:
-                st.markdown(f"**{neighbour['section']}** — {neighbour['headline']}")
-                body = neighbour["text"]
-                st.caption(body[:500] + ("…" if len(body) > 500 else ""))
-
 
 CHAT_MODEL = "claude-sonnet-5"
 CHAT_MAX_TURNS = 8
@@ -3514,6 +3573,11 @@ def render_agency_record(agency, row, docs, hits):
     if note:
         st.caption(_md_safe(note))
 
+    # Silent for anything without coded attributes: every non-NICE
+    # record, and the NICE appraisals with no committee discussion
+    # indexed.
+    nice_attributes.render_panel(row.get("appraisal_id"))
+
     record_docs = docs[docs["Appraisal_ID"] == str(row["appraisal_id"])]
     def _doc_date(value):
         when = _parse_date(value)
@@ -4375,6 +4439,18 @@ filtered_df = filtered_df[
     filtered_df["year_start"].between(year_range[0], year_range[1])
 ]
 
+# Evidence attributes: attach first so the filters can offer only values that
+# actually occur in the current result set, then narrow. Both are no-ops when
+# evidence_attributes.json is absent.
+filtered_df, _ev_matched = nice_attributes.attach(filtered_df)
+_ev_selections, _ev_options = nice_attributes.sidebar_filters(
+    filtered_df["appraisal_id"] if "appraisal_id" in filtered_df.columns else []
+)
+_ev_before = len(filtered_df)
+filtered_df = nice_attributes.apply_filters(
+    filtered_df, _ev_selections, **_ev_options
+)
+
 
 # Metrics — one card per decision category so they reconcile
 
@@ -4383,6 +4459,17 @@ metric_cols = st.columns(len(decisions))
 for col, decision in zip(metric_cols, decisions):
     with col:
         st.metric(decision, int((filtered_df["decision_simple"] == decision).sum()))
+
+if nice_attributes.available():
+    _n_coded, _n_total = nice_attributes.coverage(filtered_df["appraisal_id"])
+    _note = (f"Evidence attributes coded for {_n_coded} of these {_n_total} "
+             f"appraisals.")
+    if _ev_selections:
+        _note += (f" Attribute filters narrowed {_ev_before} → "
+                  f"{len(filtered_df)}.")
+    _note += (" Values marked ~ are where two independent extraction passes "
+              "disagreed — about 11% of cells, mostly the stance fields.")
+    st.caption(_note)
 
 st.divider()
 
@@ -4623,7 +4710,6 @@ if st.button("Retrieve Comparable Appraisals", type="primary"):
     if new_signature != st.session_state.chat_signature:
         st.session_state.chat_history = []
         st.session_state.chat_signature = new_signature
-        st.session_state.pop("nice_source", None)   # the cited section is stale too
 
 if st.session_state.hta_query_ran:
     if not indication:
@@ -4988,13 +5074,18 @@ if st.session_state.hta_query_ran:
             st.markdown(f"**Common themes across {theme_sample} rejected comparable appraisals:**")
             st.dataframe(
                 pd.DataFrame([{"Theme": f"{emoji} {label}",
-                               "Frequency":  (f"{count}/{len(similar)}"
-                        if label in (
-                            "Treatment effect waning / durability uncertainty",
-                            "Population mismatch with retrieved precedent",
-                        )
-                        else f"{count}/{theme_sample}"
-                    )}
+                               "Frequency": (
+                                   # Two labels are counted over every
+                                   # comparable, the rest over the
+                                   # rejected subset. Spell the basis out
+                                   # or the column mixes denominators.
+                                   f"{count} of {len(similar)} comparable"
+                                   if label in (
+                                       "Treatment effect waning / durability uncertainty",
+                                       "Population mismatch with retrieved precedent",
+                                   )
+                                   else f"{count} of {theme_sample} rejected"
+                               )}
                               for label, (emoji, count) in ranked_themes]),
                 width="stretch", hide_index=True)
 
@@ -5002,34 +5093,22 @@ if st.session_state.hta_query_ran:
                 with st.expander(f"Where '{label}' was raised"):
                     for aid in theme_sources.get(label, []):
                         qr = similar[similar["appraisal_id"] == aid]
-                        quote = None
+                        fallback = None
                         if len(qr) > 0:
                             source_row = qr.iloc[0]
-
-                            for col in [
-                                "original_nice_comment",
-                                "detailed_reasoning",
-                                "rejection_reasoning",
-                            ]:
+                            # Order matters: the committee's own comment first, the
+                            # workbook's summary last. Each is only a fallback - the
+                            # indexed discussion is preferred over all of them.
+                            for col in ("original_nice_comment", "detailed_reasoning",
+                                        "rejection_reasoning"):
                                 value = source_row.get(col)
+                                if pd.notna(value) and not committee_quotes.is_stub(value):
+                                    fallback = str(value).strip()
+                                    break
+                        committee_quotes.render_theme_evidence(
+                            aid, label, fallback_text=fallback, limit=1,
+                            max_chars=900, fallback_chars=1600)
 
-                                if pd.notna(value):
-                                    value = str(value).strip()
-
-                                    if value.lower() not in (
-                                        "",
-                                        "not applicable",
-                                        "not specified",
-                                        "nan",
-                                    ):
-                                        quote = value
-                                        break
-
-                            if quote and len(quote) > 220:
-                                quote = quote[:220].rsplit(" ", 1)[0] + "…"
-                        st.markdown(f"**{aid}**")
-                        st.markdown(f"> {quote}" if quote else
-                                    "_No verbatim committee text available — see full guidance._")
             st.caption(
                 "Synthesised from committee reasoning across the rejected appraisals shown "
                 "below. A theme count reflects how many of these specific appraisals raised "
@@ -5440,26 +5519,9 @@ Possible next steps:
         turns_used = len(st.session_state.chat_history) // 2
         st.caption(f"{turns_used}/{CHAT_MAX_TURNS} questions used for this query.")
 
-        _chat_col, _source_col = st.columns([1.3, 1], gap="large")
-
-        with _chat_col:
-            for _mi, msg in enumerate(st.session_state.chat_history):
-                with st.chat_message(msg["role"]):
-                    st.markdown(msg["content"])
-                    if msg["role"] != "assistant":
-                        continue
-                    _cites = nice_sections.parse_citations(msg["content"])
-                    if not _cites:
-                        continue
-                    st.caption("Sources")
-                    for _ci, (_cta, _csec) in enumerate(_cites):
-                        if st.button(f"TA{_cta} · section {_csec}",
-                                     key=f"nice_cite_{_mi}_{_ci}"):
-                            st.session_state.nice_source = (_cta, _csec, _mi)
-                            st.rerun()
-
-        with _source_col:
-            render_source_panel()
+        for msg in st.session_state.chat_history:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
 
         if turns_used >= CHAT_MAX_TURNS:
             st.warning(
