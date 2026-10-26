@@ -5096,15 +5096,30 @@ if st.session_state.hta_query_ran:
                         fallback = None
                         if len(qr) > 0:
                             source_row = qr.iloc[0]
-                            # Order matters: the committee's own comment first, the
-                            # workbook's summary last. Each is only a fallback - the
-                            # indexed discussion is preferred over all of them.
+                            # Preference order still holds - the committee's own
+                            # comment beats a generated summary - but only when
+                            # it is COMPLETE. original_nice_comment is stored
+                            # pre-truncated at 80 chars with the ellipsis baked
+                            # into the value, so taking the first non-stub
+                            # candidate showed 80 characters while 700 sat
+                            # unused in the next column.
+                            def _looks_truncated(text):
+                                t = str(text).rstrip()
+                                return t.endswith("...") or t.endswith("\u2026")
+
+                            _cands = []
                             for col in ("original_nice_comment", "detailed_reasoning",
                                         "rejection_reasoning"):
                                 value = source_row.get(col)
                                 if pd.notna(value) and not committee_quotes.is_stub(value):
-                                    fallback = str(value).strip()
-                                    break
+                                    _cands.append(str(value).strip())
+                            _whole = [c for c in _cands if not _looks_truncated(c)]
+                            if _whole:
+                                fallback = _whole[0]
+                            elif _cands:
+                                # Everything available is cut off; show the most
+                                # of it rather than the first of it.
+                                fallback = max(_cands, key=len)
                         committee_quotes.render_theme_evidence(
                             aid, label, fallback_text=fallback, limit=1,
                             max_chars=900, fallback_chars=1600)
