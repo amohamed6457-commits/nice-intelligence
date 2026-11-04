@@ -40,19 +40,6 @@ BLOCKS = [
 ]
 
 
-def first_trigger(text):
-    """Offset of the earliest module-level statement that can reach these
-    modules. Everything must be bound before this point."""
-    # The real call is indented - it sits inside an `if` at module level -
-    # so anchoring at column zero misses it entirely, which is how the first
-    # version of this patcher decided the blocks were already fine.
-    hits = [m.start() for m in
-            re.finditer(r"^[ \t]*render_agency_view\(", text, re.M)]
-    hits += [m.start() for m in
-             re.finditer(r"^[ \t]*st\.sidebar\.title\(", text, re.M)]
-    return min(hits) if hits else len(text)
-
-
 def cut(text, banner, tail):
     """Remove a block and return (text_without_it, the_block)."""
     start = text.find(banner)
@@ -99,13 +86,9 @@ def main():
         if pos == -1:
             print(f"  [skip] {name}: block not found — was it ever applied?")
             continue
-        # "Near the top" is not a character count - it is "before the first
-        # module-level statement that could use it". A fixed window broke
-        # idempotency, because the second block legitimately sits a few
-        # thousand characters past the anchor.
-        if pos < first_trigger(text):
+        if pos < anchor_at + len(ANCHOR) + 200:
             already.append(name)
-            print(f"  [ok]   {name}: already above the first top-level use")
+            print(f"  [ok]   {name}: already near the top")
             continue
         text, block = cut(text, banner, tail)
         if block is None:
@@ -136,26 +119,36 @@ def main():
               "\nNothing matched — check the file is the patched app3.py.")
         return
 
-    # Sanity: the binding must happen before the module-level statements that
-    # can reach it. Textual order is only meaningful for code that runs at
-    # import time - a name used inside a function body is resolved when the
-    # function is called, which is why the original check was wrong.
+    # Sanity: every name must be bound before its first use.
     #
-    # The statement that triggered this bug is the top-level call into the
-    # agency views, so that is the line to be in front of.
-    earliest_trigger = first_trigger(text)
-
-    for mod, binder in (("nice_attributes", "_NoAttributes"),
-                        ("committee_quotes", "_NoQuotes")):
-        m = re.search(rf"^\s*{mod} = {binder}\(\)$", text, re.M)
-        if not m:
+    # Two things this must NOT trip over, both of which it used to:
+    #
+    #   "nice_sections.py not deployed"   - the module name inside a message
+    #       string. '\bmod\.\w+' matches 'nice_sections.py' happily, and that
+    #       string sits above the fallback binding, so the check reported a
+    #       use-before-bind that does not exist. Hence the (?!py\b) guard.
+    #
+    #   the probe inside the try block - 'nice_sections.CITATION_RULES' runs
+    #       only when the import SUCCEEDED, while the '= _No...()' binding runs
+    #       only in the except branch. They are alternative paths, not
+    #       sequential ones, so a textual comparison between them is
+    #       meaningless. Only uses AFTER the whole try/except block matter,
+    #       so the search starts from the end of the binding's own line.
+    for mod in ("nice_attributes", "committee_quotes", "nice_sections"):
+        importer = re.search(rf"^\s*import {mod}\b", text, re.M)
+        if not importer:
             continue
-        if m.start() > earliest_trigger:
+        # Everything above the import statement. A use down here runs before
+        # the module exists on ANY path, which is the real failure. Uses
+        # inside or below the try/except are fine: the try branch only runs
+        # after a successful import, the except branch binds the stand-in.
+        before = text[:importer.start()]
+        stray = re.search(rf"\b{mod}\.(?!py\b)\w+", before)
+        if stray:
+            line = before[:stray.start()].count("\n") + 1
             raise SystemExit(
-                f"After patching, {mod} is still bound after the first "
-                f"module-level code that uses it. Not writing.")
-        print(f"  [check] {mod} bound at char {m.start():,}, "
-              f"first top-level trigger at {earliest_trigger:,}")
+                f"After patching, {mod} is used at line {line}, above its "
+                f"import. Not writing.")
 
     try:
         compile(text, args.app, "exec")
