@@ -49,7 +49,8 @@ try:
     # A directory of the same name on sys.path imports as an EMPTY namespace
     # package rather than raising, so a successful import is not proof the
     # real module loaded. Touch an attribute to find out.
-    nice_sections.CITATION_RULES
+    if not hasattr(nice_sections, "CITATION_RULES"):
+        raise ImportError("nice_sections resolved to a namespace package")
 except (ImportError, AttributeError):
     class _NoChapters:
         """Stand-in so a missing nice_sections.py cannot take the app down."""
@@ -68,6 +69,113 @@ except (ImportError, AttributeError):
             return "Committee sections: nice_sections.py not deployed"
 
     nice_sections = _NoChapters()
+
+# --- committee quotes (optional) ---------------------------------------
+# Checked by attribute, not by a bare import: a module whose name collides
+# with a directory imports as an empty namespace package, which succeeds and
+# then fails on first use.
+try:
+    import committee_quotes
+    if not hasattr(committee_quotes, "render_theme_evidence"):
+        raise ImportError("committee_quotes resolved to a namespace package")
+except (ImportError, AttributeError):
+    class _NoQuotes:
+        @staticmethod
+        def available():
+            return False
+
+        # Same strictness as the real module. A weak test here would make
+        # the degraded path reproduce the exact bug this patch removes:
+        # "Negative recommendation." quoted as committee reasoning.
+        _STUB_RE = re.compile(
+            r"^\W*((negative|positive|favourable|unfavourable)\s+recommendation"
+            r"|not?\s+recommend(ed|ation)?|recommend(ed|ation)?"
+            r"|(terminated|withdrawn|discontinued)(\s+\w+)?"
+            r"|rejected|approved|restricted|see\s+(full\s+)?guidance"
+            r"|n/?a|none|unknown"
+            r"|not\s+(applicable|specified|recorded|stated|available))\W*$",
+            re.IGNORECASE)
+
+        @staticmethod
+        def is_stub(text):
+            if text is None:
+                return True
+            s = str(text).strip()
+            if not s or s.lower() == "nan":
+                return True
+            # Over ~90 chars it is a sentence, not a label.
+            return len(s) <= 90 and bool(_NoQuotes._STUB_RE.match(s))
+
+        @staticmethod
+        def _trim(text, limit):
+            # Never mid-word: a quote ending "were not acce" reads as a bug
+            # even when the underlying text is complete.
+            s = str(text).strip()
+            if len(s) <= limit:
+                return s
+            w = s[:limit]
+            end = max(w.rfind(". "), w.rfind("? "), w.rfind("! "))
+            if end > limit * 0.6:
+                return w[: end + 1]
+            return w.rsplit(" ", 1)[0].rstrip(",;:") + " …"
+
+        @staticmethod
+        def render_theme_evidence(appraisal_id, theme_label,
+                                  fallback_text=None, fallback_chars=1600,
+                                  **kw):
+            import streamlit as _st
+            _st.markdown(f"**{appraisal_id}**")
+            if fallback_text and not _NoQuotes.is_stub(fallback_text):
+                _st.markdown(f"> {_NoQuotes._trim(fallback_text, fallback_chars)}")
+                return True
+            _st.caption("No committee text available for this theme.")
+            return False
+
+    committee_quotes = _NoQuotes()
+
+# --- evidence attributes (optional) ------------------------------------
+# A module whose name matches a data file or directory can import as an empty
+# namespace package, which succeeds and then fails on first use. So check for
+# a known attribute rather than trusting the import.
+# NB: must not be written as a bare expression - Streamlit's magic would
+# render it to the page.
+try:
+    import nice_attributes
+    if not hasattr(nice_attributes, "FIELDS"):
+        raise ImportError("nice_attributes resolved to a namespace package")
+except (ImportError, AttributeError):
+    class _NoAttributes:
+        FIELDS = []
+
+        @staticmethod
+        def available():
+            return False
+
+        @staticmethod
+        def attach(frame, *a, **k):
+            return frame, 0
+
+        @staticmethod
+        def sidebar_filters(*a, **k):
+            return {}, {}
+
+        @staticmethod
+        def apply_filters(frame, *a, **k):
+            return frame
+
+        @staticmethod
+        def render_panel(*a, **k):
+            return None
+
+        @staticmethod
+        def render_status_caption(*a, **k):
+            return None
+
+        @staticmethod
+        def coverage(ids):
+            return 0, len(list(ids))
+
+    nice_attributes = _NoAttributes()
 
 DATA_FILE = "NICE_v14_updated_2026-09-29.xlsx"
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -4266,113 +4374,6 @@ st.divider()
 
 # Sidebar filters
 
-# --- evidence attributes (optional) ------------------------------------
-# A module whose name matches a data file or directory can import as an empty
-# namespace package, which succeeds and then fails on first use. So check for
-# a known attribute rather than trusting the import.
-# NB: must not be written as a bare expression - Streamlit's magic would
-# render it to the page.
-try:
-    import nice_attributes
-    if not hasattr(nice_attributes, "FIELDS"):
-        raise ImportError("nice_attributes resolved to a namespace package")
-except (ImportError, AttributeError):
-    class _NoAttributes:
-        FIELDS = []
-
-        @staticmethod
-        def available():
-            return False
-
-        @staticmethod
-        def attach(frame, *a, **k):
-            return frame, 0
-
-        @staticmethod
-        def sidebar_filters(*a, **k):
-            return {}, {}
-
-        @staticmethod
-        def apply_filters(frame, *a, **k):
-            return frame
-
-        @staticmethod
-        def render_panel(*a, **k):
-            return None
-
-        @staticmethod
-        def render_status_caption(*a, **k):
-            return None
-
-        @staticmethod
-        def coverage(ids):
-            return 0, len(list(ids))
-
-    nice_attributes = _NoAttributes()
-
-# --- committee quotes (optional) ---------------------------------------
-# Checked by attribute, not by a bare import: a module whose name collides
-# with a directory imports as an empty namespace package, which succeeds and
-# then fails on first use.
-try:
-    import committee_quotes
-    if not hasattr(committee_quotes, "render_theme_evidence"):
-        raise ImportError("committee_quotes resolved to a namespace package")
-except (ImportError, AttributeError):
-    class _NoQuotes:
-        @staticmethod
-        def available():
-            return False
-
-        # Same strictness as the real module. A weak test here would make
-        # the degraded path reproduce the exact bug this patch removes:
-        # "Negative recommendation." quoted as committee reasoning.
-        _STUB_RE = re.compile(
-            r"^\W*((negative|positive|favourable|unfavourable)\s+recommendation"
-            r"|not?\s+recommend(ed|ation)?|recommend(ed|ation)?"
-            r"|(terminated|withdrawn|discontinued)(\s+\w+)?"
-            r"|rejected|approved|restricted|see\s+(full\s+)?guidance"
-            r"|n/?a|none|unknown"
-            r"|not\s+(applicable|specified|recorded|stated|available))\W*$",
-            re.IGNORECASE)
-
-        @staticmethod
-        def is_stub(text):
-            if text is None:
-                return True
-            s = str(text).strip()
-            if not s or s.lower() == "nan":
-                return True
-            # Over ~90 chars it is a sentence, not a label.
-            return len(s) <= 90 and bool(_NoQuotes._STUB_RE.match(s))
-
-        @staticmethod
-        def _trim(text, limit):
-            # Never mid-word: a quote ending "were not acce" reads as a bug
-            # even when the underlying text is complete.
-            s = str(text).strip()
-            if len(s) <= limit:
-                return s
-            w = s[:limit]
-            end = max(w.rfind(". "), w.rfind("? "), w.rfind("! "))
-            if end > limit * 0.6:
-                return w[: end + 1]
-            return w.rsplit(" ", 1)[0].rstrip(",;:") + " …"
-
-        @staticmethod
-        def render_theme_evidence(appraisal_id, theme_label,
-                                  fallback_text=None, fallback_chars=1600,
-                                  **kw):
-            import streamlit as _st
-            _st.markdown(f"**{appraisal_id}**")
-            if fallback_text and not _NoQuotes.is_stub(fallback_text):
-                _st.markdown(f"> {_NoQuotes._trim(fallback_text, fallback_chars)}")
-                return True
-            _st.caption("No committee text available for this theme.")
-            return False
-
-    committee_quotes = _NoQuotes()
-
 st.sidebar.title("🔍 Filters")
 
 search = st.sidebar.text_input(
@@ -5095,15 +5096,30 @@ if st.session_state.hta_query_ran:
                         fallback = None
                         if len(qr) > 0:
                             source_row = qr.iloc[0]
-                            # Order matters: the committee's own comment first, the
-                            # workbook's summary last. Each is only a fallback - the
-                            # indexed discussion is preferred over all of them.
+                            # Preference order still holds - the committee's own
+                            # comment beats a generated summary - but only when
+                            # it is COMPLETE. original_nice_comment is stored
+                            # pre-truncated at 80 chars with the ellipsis baked
+                            # into the value, so taking the first non-stub
+                            # candidate showed 80 characters while 700 sat
+                            # unused in the next column.
+                            def _looks_truncated(text):
+                                t = str(text).rstrip()
+                                return t.endswith("...") or t.endswith("\u2026")
+
+                            _cands = []
                             for col in ("original_nice_comment", "detailed_reasoning",
                                         "rejection_reasoning"):
                                 value = source_row.get(col)
                                 if pd.notna(value) and not committee_quotes.is_stub(value):
-                                    fallback = str(value).strip()
-                                    break
+                                    _cands.append(str(value).strip())
+                            _whole = [c for c in _cands if not _looks_truncated(c)]
+                            if _whole:
+                                fallback = _whole[0]
+                            elif _cands:
+                                # Everything available is cut off; show the most
+                                # of it rather than the first of it.
+                                fallback = max(_cands, key=len)
                         committee_quotes.render_theme_evidence(
                             aid, label, fallback_text=fallback, limit=1,
                             max_chars=900, fallback_chars=1600)

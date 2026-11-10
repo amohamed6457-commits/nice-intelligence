@@ -177,7 +177,44 @@ except (ImportError, AttributeError):
 
     nice_attributes = _NoAttributes()
 
-DATA_FILE = "NICE_v14_updated_2026-09-29.xlsx"
+# --- page-level source citation for G-BA / HAS (optional) ---------------
+# Imported HERE, above the HTA body switcher, and not with the other optional
+# modules further down: render_agency_view() runs at module level and is
+# followed by st.stop(), so a name bound after that point does not exist when
+# a G-BA or HAS record renders. A module whose name matches a data file or
+# directory can also import as an empty namespace package, which succeeds and
+# then fails on first use, so check for a known attribute rather than
+# trusting the import.
+try:
+    import source_citations
+    if not hasattr(source_citations, "render_panel"):
+        raise ImportError("source_citations resolved to a namespace package")
+except (ImportError, AttributeError):
+    class _NoCitations:
+        @staticmethod
+        def attach(*a, **k):
+            return None
+
+        @staticmethod
+        def is_attached():
+            return False
+
+        @staticmethod
+        def has_sources(*a, **k):
+            return False
+
+        @staticmethod
+        def coverage():
+            return {}
+
+        @staticmethod
+        def render_panel(*a, **k):
+            return False
+
+    source_citations = _NoCitations()
+
+
+DATA_FILE = "NICE_HAS_GBA_updated_2026-11-07.xlsx"
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
@@ -3578,6 +3615,11 @@ def render_agency_record(agency, row, docs, hits):
     # indexed.
     nice_attributes.render_panel(row.get("appraisal_id"))
 
+    # Cited source passages, with a link that opens the official PDF at the
+    # page the text came from. Silent for NICE and for any record with no
+    # indexed passages, so no guard is needed here.
+    source_citations.render_panel(agency, row.get("appraisal_id"))
+
     record_docs = docs[docs["Appraisal_ID"] == str(row["appraisal_id"])]
     def _doc_date(value):
         when = _parse_date(value)
@@ -4245,6 +4287,14 @@ def render_agency_view(agency):
         return
 
     doc_index = load_document_index(version)
+    # Index the three page-cited passage sheets for this run. Each is absent
+    # from the 6-sheet build of the workbook, in which case load_agency_sheet
+    # returns an empty frame and the citation panel renders nothing.
+    source_citations.attach(
+        load_agency_sheet("GBA_Decision_Passages", version),
+        load_agency_sheet("HAS_Economic_Pages", version),
+        load_agency_sheet("Economic_Findings", version),
+    )
     docs = doc_index[doc_index["Institution"] == agency]
     total = len(frame)
     all_matches = agency_match_table(agency, version)
