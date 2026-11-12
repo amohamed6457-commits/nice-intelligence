@@ -1,20 +1,4 @@
-"""
-HTA Evidence Explorer - chapter-level citation UI.
 
-Left pane  : ask a question; Claude searches indexed NICE committee sections
-Right pane : the cited section in full, with the quoted sentence highlighted,
-             its neighbours for context, and a link to the live NICE page
-
-Citations are section-level (TA993 section 3.13), which is how NICE is cited in
-practice, and every citation shows its source tier because a committee
-discussion chapter and a summary guidance PDF are not equivalent evidence.
-
-Run:
-  streamlit run app_hta_chapters.py
-
-Needs: an index built by build_chapter_index.py, and ANTHROPIC_API_KEY set
-either in the environment or in .streamlit/secrets.toml
-"""
 
 import json
 import os

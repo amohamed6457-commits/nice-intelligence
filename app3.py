@@ -1,18 +1,4 @@
-"""
-NICE Technology Appraisal Intelligence — dashboard, with G-BA and HAS views.
 
-Data contract: NICE_v14_updated_2026-09-28.xlsx
-  Sheet1               — NICE appraisal rows (adds year_start, year_label, search_blob)
-  G-BA_Recent          — G-BA AMNOG added-benefit resolutions (Germany)
-  HAS_Recent           — HAS early-access / Transparency Committee decisions (France)
-  Appraisal_Documents  — official source documents for every agency, keyed by ID
-  Tag_Vocabulary       — single source of truth for every categorical dropdown
-  Enrichment_Log       — provenance, surfaced in the Methodology expanders
-
-The sidebar's "HTA body" switch picks the view. The NICE view is the original
-dashboard; the G-BA and HAS views are driven by AGENCY_CONFIG, so adding rows
-to their sheets needs no code changes.
-"""
 
 import inspect
 import io
@@ -212,6 +198,64 @@ except (ImportError, AttributeError):
             return False
 
     source_citations = _NoCitations()
+
+
+# --- filter by whether anything was assessable (optional) ---------------
+try:
+    import evidence_filter
+    if not hasattr(evidence_filter, "ids_for"):
+        raise ImportError("evidence_filter resolved to a namespace package")
+except (ImportError, AttributeError):
+    class _NoEvidenceFilter:
+        @staticmethod
+        def attach_gba(*a, **k):
+            return None
+
+        @staticmethod
+        def attach_has(*a, **k):
+            return None
+
+        @staticmethod
+        def options_for(*a, **k):
+            return []
+
+        @staticmethod
+        def counts_for(*a, **k):
+            return {}
+
+        @staticmethod
+        def ids_for(*a, **k):
+            return None
+
+        @staticmethod
+        def help_for(*a, **k):
+            return ""
+
+    evidence_filter = _NoEvidenceFilter()
+
+
+# --- endpoint verdicts, with the resolution page behind them (optional) ---
+# Same guard as above: imported before the HTA body switcher, and checked
+# with hasattr because a namespace package imports fine and fails on use.
+try:
+    import endpoint_panel
+    if not hasattr(endpoint_panel, "render"):
+        raise ImportError("endpoint_panel resolved to a namespace package")
+except (ImportError, AttributeError):
+    class _NoEndpoints:
+        @staticmethod
+        def attach(*a, **k):
+            return None
+
+        @staticmethod
+        def is_attached():
+            return False
+
+        @staticmethod
+        def render(*a, **k):
+            return None
+
+    endpoint_panel = _NoEndpoints()
 
 
 DATA_FILE = "NICE_HAS_GBA_updated_2026-11-07.xlsx"
@@ -3295,6 +3339,25 @@ def render_agency_switcher():
         "NICE weighs cost-effectiveness for the NHS · the G-BA rates added clinical benefit "
         "against a comparator it sets · HAS rates clinical benefit (SMR/ASMR) and decides "
         "early access.")
+    # Passage language. Drawn beside the HTA body switch, not inside the
+    # citation panel, so it is visible before a record is opened. Only shown
+    # when a translations.json actually exists, and never for NICE, which is
+    # already English. source_citations reads this through _show_english();
+    # the "w_" prefix keeps the choice when switching HTA body.
+    if choice in ("G-BA", "HAS") and getattr(
+            source_citations, "translations_loaded", lambda: False)():
+        st.sidebar.markdown("**\U0001F310 Passage language**")
+        st.sidebar.radio(
+            "Passage language",
+            ["Original", "English"],
+            horizontal=True,
+            key="w_src_lang_mode",
+            label_visibility="collapsed",
+        )
+        st.sidebar.caption(
+            ("German" if choice == "G-BA" else "French") + " is the official "
+            "record. English is a machine translation shown for reading only "
+            "\u2014 quotes and page links always use the original.")
     st.sidebar.divider()
     return choice
 
@@ -3316,7 +3379,7 @@ def agency_sidebar_guide(agency):
 
 # ── HTA Evidence Explorer (search) ───────────────────────────────────────────
 
-EXPLORER_FIELDS = ("drug", "condition", "areas", "outcomes", "procedures", "years", "orphan")
+EXPLORER_FIELDS = ("drug", "condition", "areas", "outcomes", "procedures", "years", "orphan", "evidence")
 RESULTS_SECTIONS = ["📋 Decisions", "📊 Analysis", "🧾 Evidence", "🌍 Other HTA bodies",
                     "💬 Ask AI"]
 
@@ -3395,6 +3458,14 @@ def render_agency_explorer(agency, frame):
                   else "HAS records ~700 free-text procedure names; these are the kinds "
                        "of procedure behind them. Tick First listing and Extension of "
                        "indication to leave out routine renewals."))
+        _evidence_options = evidence_filter.options_for(agency)
+        if _evidence_options:
+            st.pills(
+                "Evidence available — tick to narrow (none ticked = all)",
+                _evidence_options, selection_mode="multi",
+                format_func=_counted(evidence_filter.counts_for(agency)),
+                key=_explorer_key(slug, "evidence"),
+                help=evidence_filter.help_for(agency))
         c3, c4 = st.columns([3, 2])
         with c3:
             if year_bounds and year_bounds[0] < year_bounds[1]:
@@ -3436,6 +3507,10 @@ def run_agency_search(agency, frame, query):
         result = result[result["outcome"].isin(query["outcomes"])]
     if query.get("procedures"):
         result = result[result["procedure_type"].isin(query["procedures"])]
+    _evidence_ids = evidence_filter.ids_for(agency, query.get("evidence"))
+    if _evidence_ids is not None:
+        result = result[result["appraisal_id"].astype(str).str.strip()
+                        .isin(_evidence_ids)]
     years = query.get("years")
     if years and len(years) == 2 and result["year"].notna().any():
         lo, hi = int(years[0]), int(years[1])
@@ -3550,6 +3625,7 @@ def describe_query(agency, query, labels, frame=None):
         read_as = (f" (read as: {', '.join(labels)})" if labels else "")
         parts.append(f"condition **{_md_safe(query['condition'].strip())}**{read_as}")
     for field, label in (("areas", "areas"), ("outcomes", "outcomes"),
+                         ("evidence", "evidence"),
                          ("procedures", "procedure types")):
         if query.get(field):
             parts.append(f"{label}: {', '.join(query[field])}")
@@ -3597,12 +3673,13 @@ def render_agency_record(agency, row, docs, hits):
     if assessment_type and assessment_type.rstrip(";") != row.get("procedure_type"):
         st.caption(f"Procedure as recorded: {_md_safe(_shorten(assessment_type, 200))}")
     if indication:
-        st.markdown(f"**Indication (as recorded):** {_md_safe(_shorten(indication, 700))}")
+        st.markdown(f"**Indication (as recorded):** {_md_safe(_shorten(source_citations.display_text(indication), 700))}")
 
     for label, col in cfg["detail_fields"]:
         value = _text(row.get(col))
         if value:
-            st.markdown(f"**{label}:** {_md_safe(value)}")
+            st.markdown(f"**{label}:** "
+                        f"{_md_safe(source_citations.display_text(value))}")
     icer = format_eur_icer(row)
     if icer:
         st.markdown(f"**Published ICER:** {icer}")
@@ -3618,6 +3695,10 @@ def render_agency_record(agency, row, docs, hits):
     # Cited source passages, with a link that opens the official PDF at the
     # page the text came from. Silent for NICE and for any record with no
     # indexed passages, so no guard is needed here.
+    # Verdicts first, passages underneath: a reader wants the conclusion and
+    # its page before the wall of source text.
+    endpoint_panel.render(agency, row.get("appraisal_id"))
+
     source_citations.render_panel(agency, row.get("appraisal_id"))
 
     record_docs = docs[docs["Appraisal_ID"] == str(row["appraisal_id"])]
@@ -4295,6 +4376,18 @@ def render_agency_view(agency):
         load_agency_sheet("HAS_Economic_Pages", version),
         load_agency_sheet("Economic_Findings", version),
     )
+    # The endpoint panel needs the AIS subgroup rows and the same passages,
+    # which it parses for each resolution's endpoint-category summary table.
+    endpoint_panel.attach(
+        load_agency_sheet("GBA_Subgroups", version),
+        load_agency_sheet("GBA_Decision_Passages", version),
+    )
+    # Which appraisals had assessable evidence at all. G-BA reads this
+    # from the subgroup verdicts; HAS from whether an SMR grade exists.
+    evidence_filter.attach_gba(load_agency_sheet("GBA_Subgroups", version)
+                               if agency == "G-BA" else None)
+    evidence_filter.attach_has(load_agency_sheet("HAS_Ratings", version)
+                               if agency == "HAS" else None)
     docs = doc_index[doc_index["Institution"] == agency]
     total = len(frame)
     all_matches = agency_match_table(agency, version)

@@ -1,21 +1,4 @@
-"""
-Preflight for the G-BA / HAS source citation panel.
 
-The panel fails SILENTLY in three ways, all of which look identical from the
-browser — a record with no citations under it:
-
-  1. source_citations.py is not beside app3.py, so the _NoCitations stand-in
-     is bound and render_panel() returns False forever.
-  2. app3.py points DATA_FILE at a workbook that doesn't have the three
-     passage sheets. Two files have shipped under near-identical names, one
-     with 6 sheets and one with 15.
-  3. The record on screen genuinely has no indexed passages — 98% of HAS
-     records are in this category, which is normal, not a fault.
-
-This separates the three. Run it from the folder that holds app3.py.
-
-  python check_citations_setup.py
-"""
 
 import importlib.util
 import os

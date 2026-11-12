@@ -1,18 +1,4 @@
-"""
-NICE Technology Appraisal Intelligence — dashboard, with G-BA and HAS views.
 
-Data contract: NICE_v14_updated_2026-09-28.xlsx
-  Sheet1               — NICE appraisal rows (adds year_start, year_label, search_blob)
-  G-BA_Recent          — G-BA AMNOG added-benefit resolutions (Germany)
-  HAS_Recent           — HAS early-access / Transparency Committee decisions (France)
-  Appraisal_Documents  — official source documents for every agency, keyed by ID
-  Tag_Vocabulary       — single source of truth for every categorical dropdown
-  Enrichment_Log       — provenance, surfaced in the Methodology expanders
-
-The sidebar's "HTA body" switch picks the view. The NICE view is the original
-dashboard; the G-BA and HAS views are driven by AGENCY_CONFIG, so adding rows
-to their sheets needs no code changes.
-"""
 
 import inspect
 import io

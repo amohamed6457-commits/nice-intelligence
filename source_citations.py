@@ -39,7 +39,10 @@ Usage, matching the nice_attributes convention:
     source_citations.render_panel("G-BA", appraisal_id)
 """
 
+import hashlib
 import html as _html
+import json
+import os
 import re
 
 import pandas as pd
@@ -52,6 +55,8 @@ _HAS_PAGES = None
 _FINDINGS = None
 _COSTS = None      # appraisal_id -> DataFrame of GBA_Treatment_Costs rows
 _TABLES = None     # appraisal_id -> [{page, header, rows, notes}]
+_TRANSLATIONS = None       # sha1(text)[:16] -> English rendering
+TRANSLATIONS_FILE = "translations.json"
 
 TABLES_FILE = "gba_tables.json"
 
@@ -360,11 +365,128 @@ def value_in_passage(value, text):
     return any(f in body for f in forms)
 
 
+def _load_translations(path=TRANSLATIONS_FILE):
+    """English renderings produced by translate_passages.py, keyed by a hash
+    of the ORIGINAL text. Missing file is not an error: the panel simply
+    stays monolingual."""
+    global _TRANSLATIONS
+    if _TRANSLATIONS is not None:
+        return _TRANSLATIONS
+    _TRANSLATIONS = {}
+    try:
+        if os.path.exists(path):
+            with open(path, encoding="utf-8") as fh:
+                loaded = json.load(fh)
+            if isinstance(loaded, dict):
+                _TRANSLATIONS = {k: v for k, v in loaded.items()
+                                 if isinstance(v, str)
+                                 and not v.startswith("__ERROR__")}
+    except (ValueError, OSError):
+        _TRANSLATIONS = {}
+    return _TRANSLATIONS
+
+
+def translations_loaded():
+    return bool(_load_translations())
+
+
+def translation_for(text):
+    """English for one passage, or None. Keyed exactly as the translator
+    wrote it: sha1 of the stripped original, first 16 hex characters."""
+    body = _text(text)
+    if not body:
+        return None
+    key = hashlib.sha1(body.strip().encode("utf-8")).hexdigest()[:16]
+    return _load_translations().get(key)
+
+
+def collapse_repeats(text, min_shared=120):
+    """Collapse near-identical paragraphs that differ only by subgroup.
+
+    G-BA files its reasoning per subgroup, and app3 renders the joined
+    field, so a three-subgroup appraisal prints the same 900 characters
+    three times and diverges only at "On patient group a2) / b1) / b2)".
+    Reading it, you cannot see where the repetition ends and the difference
+    begins -- which is the part that actually matters, because the
+    comparator usually differs between subgroups.
+
+    So the shared opening is printed once and each paragraph contributes
+    only its own tail. Nothing is discarded: every word still appears.
+    """
+    body = _text(text)
+    if not body:
+        return text
+    parts = [p.strip() for p in re.split(r"\n\s*\n|\r\n\s*\r\n", body)
+             if p.strip()]
+    if len(parts) < 2:
+        parts = [p.strip() for p in body.split("\n") if p.strip()]
+    if len(parts) < 2:
+        return text
+
+    shared = parts[0]
+    for part in parts[1:]:
+        limit = min(len(shared), len(part))
+        i = 0
+        while i < limit and shared[i] == part[i]:
+            i += 1
+        shared = shared[:i]
+        if len(shared) < min_shared:
+            return text
+
+    # Cut the shared part back to a word boundary so it does not end mid-word.
+    shared = shared[:shared.rfind(" ")] if " " in shared else shared
+    tails = [part[len(shared):].strip() for part in parts]
+    if not all(tails):
+        return text
+    out = [shared.strip()]
+    for tail in tails:
+        out.append("- " + tail)
+    return "\n\n".join(out)
+
+
+def display_text(value):
+    """What to SHOW for any field on the record.
+
+    The English rendering when the reader has asked for English and one
+    exists; otherwise the value exactly as it came from the workbook. Never
+    raises and never returns None for a non-None input, so a caller can wrap
+    any field with it safely.
+    """
+    body = _text(value)
+    if not body:
+        return value
+    if _show_english():
+        body = translation_for(body) or body
+    # Collapse the per-subgroup repetition AFTER translation, so the shared
+    # opening is found in whichever language is on screen.
+    return collapse_repeats(body)
+
+
+def _show_english():
+    # The "w_" prefix matters: app3 re-saves every w_-keyed value at the top
+    # of each run, so the choice survives switching HTA body. Without it,
+    # Streamlit drops the value on any run where the widget is not drawn.
+    try:
+        return st.session_state.get("w_src_lang_mode", "Original") == "English"
+    except Exception:                                      # noqa: BLE001
+        return False
+
+
 def _render_passage(text, url, page, caption=None, verified=None, query=None):
-    """One cited fragment: the text, then a link to its page."""
+    """One cited fragment: the text, then a link to its page.
+
+    In English mode the translation is shown in place of the original and
+    labelled as machine translation, but the ORIGINAL is always one click
+    away and the page link always opens the official PDF in its own
+    language. A translated passage is a reading aid, never the record.
+    """
     body = _text(text)
     if not body:
         return
+    original = body
+    english = translation_for(body) if _show_english() else None
+    if english:
+        body = english
     body, continued = clean_start(body)
     shown, clipped = trim(body)
     quote = ("… " if continued else "") + _md_safe(shown)
@@ -390,10 +512,15 @@ def _render_passage(text, url, page, caption=None, verified=None, query=None):
                 f'<div style="line-height:1.65;max-height:60vh;overflow-y:auto;'
                 f'padding-right:8px">{marked}</div>',
                 unsafe_allow_html=True)
+    if english:
+        with st.expander("Show the original wording", expanded=False):
+            st.markdown("> " + _md_safe(original).replace("\n", "  \n> "))
     link = page_url(url, page)
     bits = []
     if link:
         bits.append(f"[Open the source at page {int(page)} ↗]({link})")
+    if english:
+        bits.append("machine translation — the original is the record")
     if caption:
         bits.append(caption)
     if bits:
@@ -683,6 +810,9 @@ def render_panel(agency, appraisal_id, max_sections=4, max_findings=6):
     key = _text(appraisal_id)
     if not key:
         return False
+    # The language control is drawn by app3's sidebar, beside the HTA body
+    # switch, so it is visible before a record is opened. This module only
+    # READS the choice, through _show_english().
     if agency == "G-BA":
         return _render_gba(key, max_sections)
     if agency == "HAS":
