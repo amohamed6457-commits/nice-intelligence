@@ -1,23 +1,3 @@
-"""
-Why do ~229 NICE appraisals have no committee-discussion chapter?
-
-The fetch script records its state in chapter_index.json. This reads that
-file and the parsed chapter_sections.json beside it and reports WHY each
-appraisal has no sections — without needing the fetch script itself, and
-without assuming a schema, because the index has changed shape over the
-project and guessing at keys is how you get a confident wrong answer.
-
-The question it exists to settle: is the gap a bug, or is it appraisals that
-never had a committee discussion to publish? Terminated appraisals,
-non-submissions and fast-track approvals produce no committee-discussion
-chapter at all. If most of the 229 are those, the gap is not a gap and the
-coverage figure to quote is much better than 486 of 762.
-
-    python why_no_chapters.py
-    python why_no_chapters.py --list 20        # show more failing ids
-    python why_no_chapters.py --dump TA0434    # everything held for one id
-"""
-
 import argparse
 import collections
 import json

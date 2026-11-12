@@ -1,29 +1,3 @@
-"""
-Stop preferring a column whose stored text is already cut off.
-
-The bug: original_nice_comment is stored pre-truncated at 80 characters with
-the ellipsis baked into the value --
-
-    'At the time of appraisal, the technology was not considered to be an appropri...'
-
--- and it sits first in the fallback chain, so it wins every time while 700+
-characters of usable text sit unread in detailed_reasoning. Nothing in the app
-was truncating anything; it was faithfully showing a column that had been
-truncated when the workbook was built.
-
-The fix keeps the preference order (the committee's own comment is better than
-a generated summary WHEN IT IS COMPLETE) but skips any candidate that has
-obviously been cut, falling back to the longest remaining option.
-
-Also teaches committee_quotes.is_stub to recognise an ellipsis-terminated
-value, so the degraded path doesn't reintroduce it.
-
-Idempotent. Backs up to app3.py.bak4. Compiles before writing.
-
-  python patch_app3_truncated.py --dry-run
-  python patch_app3_truncated.py
-"""
-
 import argparse
 import os
 import shutil

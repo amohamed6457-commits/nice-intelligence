@@ -1,24 +1,3 @@
-"""
-Move the optional-module imports to the top of app3.py.
-
-The bug: both blocks were inserted next to `st.sidebar.title("Filters")`,
-around line 4270. But `render_agency_view()` runs at line ~4200, and the
-G-BA and HAS views render an appraisal record from there — which calls
-nice_attributes.render_panel() before the import statement has executed.
-
-    NameError: name 'nice_attributes' is not defined
-
-NICE happened to work because its path reaches that code later. Python
-resolves a module-level name at call time, so the fix is simply to bind the
-name earlier: move both blocks up beside the nice_sections block that was
-already correctly placed at the top.
-
-Idempotent. Backs up to app3.py.bak3. Compiles before writing.
-
-  python patch_app3_imports.py --dry-run
-  python patch_app3_imports.py
-"""
-
 import argparse
 import os
 import re

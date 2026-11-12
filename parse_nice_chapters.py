@@ -1,29 +1,3 @@
-"""
-Stage 2: parse NICE committee-discussion chapters into section-numbered chunks.
-
-Written against real markup from TA710, TA805 and TA993, which between them
-cover the variants NICE has used:
-
-  TA710  <div id="ta710_3_1">  <p class="numbered-paragraph">
-                                 <span class="paragraph-number">3.1 </span>text
-  TA805  same shape, 21 sections
-  TA993  <div id="ta993-3_1">  number in an <h5>, no span.paragraph-number
-                               (note the hyphen after the TA number)
-
-The reliable anchor across all three is the element id:
-    ta<number><-|_><chapter>_<section>      e.g. ta710_3_1, ta993-3_1
-Keying off that sidesteps the span-vs-h5 difference entirely.
-
-Each section's enclosing div.section carries the committee's own one-line
-conclusion in its title attribute, and its parent div.section carries the
-broader theme. Both are captured: they make strong retrieval anchors and give
-the UI something meaningful to show above a quote.
-
-Usage:
-  python parse_nice_chapters.py                     # parse ./nice_chapters/*.html
-  python parse_nice_chapters.py --dir chapters --verify
-"""
-
 import argparse
 import glob
 import json
