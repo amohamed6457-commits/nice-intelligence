@@ -15,7 +15,43 @@ import streamlit as st
 from hta_data import *
 from hta_core import *  # noqa: F401,F403
 from hta_nice import *  # noqa: F401,F403
-from hta_ui import *  # noqa: F401,F403
+
+__all__ = [
+    "AGENCY_CONFIG",
+    "CHAT_FIELD_CHARS_FULL",
+    "CHAT_FIELD_CHARS_TIGHT",
+    "CHAT_MAX_CONTEXT_ROWS",
+    "CHAT_MAX_TURNS",
+    "CHAT_MODEL",
+    "CHAT_SYSTEM_PROMPT",
+    "FALLBACK_CONCERN",
+    "GBA_CHAT_PROMPT",
+    "GBA_MD_COLORS",
+    "GBA_METHODOLOGY",
+    "GBA_OUTCOME_ORDER",
+    "GBA_PROCEDURE_ORDER",
+    "HAS_CHAT_PROMPT",
+    "HAS_MD_COLORS",
+    "HAS_METHODOLOGY",
+    "HAS_OUTCOME_ORDER",
+    "HAS_PROCEDURE_ORDER",
+    "RESEARCH_QUESTIONS_BY_THEME",
+    "THEME_TAGS",
+    "WANING_KEYWORDS",
+    "_AGENCY_CHAT_RULES",
+    "_anthropic_api_key",
+    "_matches_by_record",
+    "ask_chat",
+    "build_agency_chat_context",
+    "build_chat_context",
+    "build_concern_frequency",
+    "extract_severity",
+    "render_agency_chat",
+    "research_questions_from_themes",
+    "split_shared_unique",
+    "structure_reasoning_card",
+    "synthesise_themes",
+]
 
 CHAT_MODEL = "claude-sonnet-5"
 CHAT_MAX_TURNS = 8

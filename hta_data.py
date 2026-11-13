@@ -10,7 +10,20 @@ import os
 import re
 import pandas as pd
 import streamlit as st
-from hta_core import *  # noqa: F401,F403
+
+__all__ = [
+    "DATA_FILE",
+    "DOC_INDEX_COLUMNS",
+    "_read_sheet",
+    "_workbook",
+    "data_version",
+    "load_agency_sheet",
+    "load_data",
+    "load_document_index",
+    "load_enrichment_log",
+    "load_vocabulary",
+    "vocab_options",
+]
 
 DATA_FILE = "NICE_HAS_GBA_updated_2026-11-07.xlsx"
 def data_version():

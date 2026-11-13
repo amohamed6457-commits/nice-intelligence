@@ -28,6 +28,22 @@ from reportlab.platypus import Spacer
 from reportlab.platypus import Table
 from reportlab.platypus import TableStyle
 
+__all__ = [
+    "render_nice_page",
+    "FIELD_MAP",
+    "ICER_TYPE_LABELS",
+    "RECENCY_MAX_POINTS",
+    "SEARCH_SYNONYMS",
+    "SIMILARITY_WEIGHTS",
+    "_guidance_status_category",
+    "calculate_similarity_score",
+    "classify_historical_icer",
+    "format_historical_icer",
+    "generate_assessment_pdf",
+    "has_tag_coverage",
+    "resolve_keyword",
+]
+
 def _guidance_status_category(text):
     """
     Bucket the free-text current_guidance_status into something filterable.
