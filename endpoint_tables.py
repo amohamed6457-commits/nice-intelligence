@@ -86,6 +86,45 @@ DRUG_SUFFIX = re.compile(
     r"ustekinumab|cept|tide|sone|olone)\s*[a-z]?$", re.IGNORECASE)
 
 
+# Positive evidence that a table reports OUTCOMES. The blacklist above only
+# catches cost tables whose heading was anticipated; six of the eleven errors
+# in the 50-row benchmark were cost, comparator or regimen tables phrased in
+# a way it did not cover, landing under a clinical category. Requiring proof
+# that outcome data is present inverts the default from "include unless it
+# looks like a cost table" to "exclude unless it looks like results".
+OUTCOME_EVIDENCE = [
+    r"\[\s*-?[\d.,]+\s*[;:]\s*-?[\d.,]+\s*\]",       # [0,62; 1,01]
+    r"\b(?:HR|RR|OR|RD|SMD|MD)\b\s*[:=]",            # HR = 0,79
+    r"\b\d+\s*\(\s*\d+[.,]?\d*\s*%?\s*\)",           # 113 (22.3)
+    r"\bp\s*[-\s]?(?:Wert|value)\b|\bp\s*[<=>]\s*0",  # p-Wert / p < 0.05
+    r"\b(?:MV|MW)\s*\(\s*S[DE]\s*\)",                # MV (SD)
+    r"\bn\.?\s?r\.?\b|\bk\.\s?A\.\b|\bn\.\s?d\.\b",  # not reached / k. A.
+]
+OUTCOME_EVIDENCE = [re.compile(p, re.IGNORECASE) for p in OUTCOME_EVIDENCE]
+
+# Cells that mean money or dosing rather than results.
+PRICE_OR_DOSE = re.compile(
+    r"€|\bEUR\b|\bmg\b|\bml\b|\b[µu]g\b|Packung|Durchstechflasche|"
+    r"Tablette|Filmtablette|Fertigspritze|pack\s+size|\bIE\b|\bI\.E\.\b",
+    re.IGNORECASE)
+
+
+def _has_outcome_evidence(table):
+    """True when the cells actually carry results, not prices or doses."""
+    cells = [str(c or "") for row in (table.get("rows") or []) for c in row]
+    cells += [str(c or "") for c in (table.get("header") or [])]
+    filled = [c for c in cells if c.strip()]
+    if not filled:
+        return False
+    blob = " ".join(filled)
+    if not any(p.search(blob) for p in OUTCOME_EVIDENCE):
+        return False
+    # Even with a CI somewhere, a table dominated by prices or dose units is
+    # a cost table that happens to contain a number in brackets.
+    money = sum(1 for c in filled if PRICE_OR_DOSE.search(c))
+    return money / len(filled) <= 0.25
+
+
 def _looks_like_drug(label):
     """True for a bare drug name: a short label, no digits, INN suffix."""
     text = re.sub(r"^nab-|\s*\(.*?\)\s*$", "", str(label or "").strip())
@@ -172,7 +211,13 @@ def is_endpoint_table(table):
         drugs = sum(1 for lab in labels if _looks_like_drug(lab))
         if drugs / len(labels) > 0.5:
             return False
-    return True
+
+    # Last and strictest: the table must show evidence of reporting results.
+    # This costs recall -- a purely descriptive endpoint table with no
+    # effect estimate is now excluded -- and that is the right trade here,
+    # because a cost table rendered under "Quality of life" looks
+    # authoritative and is wrong, while a missing table is merely missing.
+    return _has_outcome_evidence(table)
 
 
 def sections(table):

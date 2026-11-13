@@ -1,3 +1,20 @@
+"""
+Add the "Evidence available" filter to the Explorer, for G-BA and HAS.
+
+Five small edits to app3.py, each anchored on a single line that occurs
+exactly once:
+
+  1. a guarded import of evidence_filter;
+  2. "evidence" added to EXPLORER_FIELDS so the form collects it;
+  3. the attach() calls, beside the other frames;
+  4. an st.pills chip row under Procedure type;
+  5. the filter applied in run_agency_search.
+
+    python patch_app3_evidence.py --check
+    python patch_app3_evidence.py
+    python patch_app3_evidence.py --revert
+"""
+
 import argparse
 import os
 import shutil

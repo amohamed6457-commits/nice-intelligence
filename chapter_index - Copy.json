@@ -1,0 +1,4336 @@
+{
+  "done": {
+    "1184": {
+      "ta": "1184",
+      "chapter_path": "/guidance/ta1184/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1184_discussion.html",
+      "chars": 68084,
+      "n_chapters": 5
+    },
+    "1182": {
+      "ta": "1182",
+      "chapter_path": "/guidance/ta1182/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1182_discussion.html",
+      "chars": 61057,
+      "n_chapters": 5
+    },
+    "1177": {
+      "ta": "1177",
+      "chapter_path": "/guidance/ta1177/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1177_discussion.html",
+      "chars": 74016,
+      "n_chapters": 5
+    },
+    "1176": {
+      "ta": "1176",
+      "chapter_path": "/guidance/ta1176/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1176_discussion.html",
+      "chars": 107314,
+      "n_chapters": 5
+    },
+    "1175": {
+      "ta": "1175",
+      "chapter_path": "/guidance/ta1175/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1175_discussion.html",
+      "chars": 92280,
+      "n_chapters": 5
+    },
+    "1174": {
+      "ta": "1174",
+      "chapter_path": "/guidance/ta1174/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1174_discussion.html",
+      "chars": 63467,
+      "n_chapters": 5
+    },
+    "1173": {
+      "ta": "1173",
+      "chapter_path": "/guidance/ta1173/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1173_discussion.html",
+      "chars": 81394,
+      "n_chapters": 5
+    },
+    "1171": {
+      "ta": "1171",
+      "chapter_path": "/guidance/ta1171/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1171_discussion.html",
+      "chars": 81225,
+      "n_chapters": 5
+    },
+    "1170": {
+      "ta": "1170",
+      "chapter_path": "/guidance/ta1170/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1170_discussion.html",
+      "chars": 78871,
+      "n_chapters": 5
+    },
+    "1169": {
+      "ta": "1169",
+      "chapter_path": "/guidance/ta1169/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1169_discussion.html",
+      "chars": 94644,
+      "n_chapters": 5
+    },
+    "1167": {
+      "ta": "1167",
+      "chapter_path": "/guidance/ta1167/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1167_discussion.html",
+      "chars": 86408,
+      "n_chapters": 5
+    },
+    "1166": {
+      "ta": "1166",
+      "chapter_path": "/guidance/ta1166/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1166_discussion.html",
+      "chars": 60619,
+      "n_chapters": 5
+    },
+    "1165": {
+      "ta": "1165",
+      "chapter_path": "/guidance/ta1165/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1165_discussion.html",
+      "chars": 82668,
+      "n_chapters": 5
+    },
+    "1164": {
+      "ta": "1164",
+      "chapter_path": "/guidance/ta1164/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1164_discussion.html",
+      "chars": 74824,
+      "n_chapters": 5
+    },
+    "1162": {
+      "ta": "1162",
+      "chapter_path": "/guidance/ta1162/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1162_discussion.html",
+      "chars": 113420,
+      "n_chapters": 5
+    },
+    "1161": {
+      "ta": "1161",
+      "chapter_path": "/guidance/ta1161/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1161_discussion.html",
+      "chars": 106884,
+      "n_chapters": 5
+    },
+    "1158": {
+      "ta": "1158",
+      "chapter_path": "/guidance/ta1158/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1158_discussion.html",
+      "chars": 85011,
+      "n_chapters": 5
+    },
+    "1157": {
+      "ta": "1157",
+      "chapter_path": "/guidance/ta1157/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1157_discussion.html",
+      "chars": 159884,
+      "n_chapters": 5
+    },
+    "1156": {
+      "ta": "1156",
+      "chapter_path": "/guidance/ta1156/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1156_discussion.html",
+      "chars": 78605,
+      "n_chapters": 5
+    },
+    "1155": {
+      "ta": "1155",
+      "chapter_path": "/guidance/ta1155/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1155_discussion.html",
+      "chars": 115071,
+      "n_chapters": 5
+    },
+    "1153": {
+      "ta": "1153",
+      "chapter_path": "/guidance/ta1153/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1153_discussion.html",
+      "chars": 81762,
+      "n_chapters": 5
+    },
+    "1150": {
+      "ta": "1150",
+      "chapter_path": "/guidance/ta1150/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1150_discussion.html",
+      "chars": 89719,
+      "n_chapters": 5
+    },
+    "1149": {
+      "ta": "1149",
+      "chapter_path": "/guidance/ta1149/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1149_discussion.html",
+      "chars": 92472,
+      "n_chapters": 5
+    },
+    "1148": {
+      "ta": "1148",
+      "chapter_path": "/guidance/ta1148/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1148_discussion.html",
+      "chars": 105263,
+      "n_chapters": 5
+    },
+    "1147": {
+      "ta": "1147",
+      "chapter_path": "/guidance/ta1147/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1147_discussion.html",
+      "chars": 121837,
+      "n_chapters": 5
+    },
+    "1146": {
+      "ta": "1146",
+      "chapter_path": "/guidance/ta1146/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1146_discussion.html",
+      "chars": 69324,
+      "n_chapters": 5
+    },
+    "1143": {
+      "ta": "1143",
+      "chapter_path": "/guidance/ta1143/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1143_discussion.html",
+      "chars": 78088,
+      "n_chapters": 5
+    },
+    "1142": {
+      "ta": "1142",
+      "chapter_path": "/guidance/ta1142/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1142_discussion.html",
+      "chars": 82701,
+      "n_chapters": 5
+    },
+    "1140": {
+      "ta": "1140",
+      "chapter_path": "/guidance/ta1140/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1140_discussion.html",
+      "chars": 99820,
+      "n_chapters": 5
+    },
+    "1139": {
+      "ta": "1139",
+      "chapter_path": "/guidance/ta1139/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1139_discussion.html",
+      "chars": 83728,
+      "n_chapters": 5
+    },
+    "1138": {
+      "ta": "1138",
+      "chapter_path": "/guidance/ta1138/chapter/3-Discussion",
+      "match_score": 98,
+      "file": "nice_chapters\\TA1138_discussion.html",
+      "chars": 40705,
+      "n_chapters": 5
+    },
+    "1136": {
+      "ta": "1136",
+      "chapter_path": "/guidance/ta1136/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1136_discussion.html",
+      "chars": 82078,
+      "n_chapters": 5
+    },
+    "1134": {
+      "ta": "1134",
+      "chapter_path": "/guidance/ta1134/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1134_discussion.html",
+      "chars": 79594,
+      "n_chapters": 5
+    },
+    "1133": {
+      "ta": "1133",
+      "chapter_path": "/guidance/ta1133/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1133_discussion.html",
+      "chars": 122798,
+      "n_chapters": 5
+    },
+    "1131": {
+      "ta": "1131",
+      "chapter_path": "/guidance/ta1131/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1131_discussion.html",
+      "chars": 51238,
+      "n_chapters": 5
+    },
+    "1130": {
+      "ta": "1130",
+      "chapter_path": "/guidance/ta1130/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1130_discussion.html",
+      "chars": 78716,
+      "n_chapters": 5
+    },
+    "1129": {
+      "ta": "1129",
+      "chapter_path": "/guidance/ta1129/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1129_discussion.html",
+      "chars": 69617,
+      "n_chapters": 5
+    },
+    "1128": {
+      "ta": "1128",
+      "chapter_path": "/guidance/ta1128/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1128_discussion.html",
+      "chars": 53018,
+      "n_chapters": 5
+    },
+    "1126": {
+      "ta": "1126",
+      "chapter_path": "/guidance/ta1126/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1126_discussion.html",
+      "chars": 107712,
+      "n_chapters": 5
+    },
+    "1122": {
+      "ta": "1122",
+      "chapter_path": "/guidance/ta1122/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1122_discussion.html",
+      "chars": 116601,
+      "n_chapters": 6
+    },
+    "1120": {
+      "ta": "1120",
+      "chapter_path": "/guidance/ta1120/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1120_discussion.html",
+      "chars": 58148,
+      "n_chapters": 5
+    },
+    "1117": {
+      "ta": "1117",
+      "chapter_path": "/guidance/ta1117/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1117_discussion.html",
+      "chars": 79742,
+      "n_chapters": 5
+    },
+    "1116": {
+      "ta": "1116",
+      "chapter_path": "/guidance/ta1116/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1116_discussion.html",
+      "chars": 128423,
+      "n_chapters": 5
+    },
+    "1115": {
+      "ta": "1115",
+      "chapter_path": "/guidance/ta1115/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1115_discussion.html",
+      "chars": 58226,
+      "n_chapters": 5
+    },
+    "1114": {
+      "ta": "1114",
+      "chapter_path": "/guidance/ta1114/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1114_discussion.html",
+      "chars": 82016,
+      "n_chapters": 5
+    },
+    "1113": {
+      "ta": "1113",
+      "chapter_path": "/guidance/ta1113/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1113_discussion.html",
+      "chars": 66597,
+      "n_chapters": 5
+    },
+    "1107": {
+      "ta": "1107",
+      "chapter_path": "/guidance/ta1107/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1107_discussion.html",
+      "chars": 63315,
+      "n_chapters": 5
+    },
+    "1106": {
+      "ta": "1106",
+      "chapter_path": "/guidance/ta1106/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1106_discussion.html",
+      "chars": 85534,
+      "n_chapters": 5
+    },
+    "1103": {
+      "ta": "1103",
+      "chapter_path": "/guidance/ta1103/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1103_discussion.html",
+      "chars": 93000,
+      "n_chapters": 5
+    },
+    "1101": {
+      "ta": "1101",
+      "chapter_path": "/guidance/ta1101/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1101_discussion.html",
+      "chars": 89563,
+      "n_chapters": 5
+    },
+    "1099": {
+      "ta": "1099",
+      "chapter_path": "/guidance/ta1099/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1099_discussion.html",
+      "chars": 44941,
+      "n_chapters": 5
+    },
+    "1098": {
+      "ta": "1098",
+      "chapter_path": "/guidance/ta1098/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1098_discussion.html",
+      "chars": 75783,
+      "n_chapters": 5
+    },
+    "1097": {
+      "ta": "1097",
+      "chapter_path": "/guidance/ta1097/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1097_discussion.html",
+      "chars": 75268,
+      "n_chapters": 5
+    },
+    "1096": {
+      "ta": "1096",
+      "chapter_path": "/guidance/ta1096/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1096_discussion.html",
+      "chars": 63440,
+      "n_chapters": 5
+    },
+    "1093": {
+      "ta": "1093",
+      "chapter_path": "/guidance/ta1093/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1093_discussion.html",
+      "chars": 91335,
+      "n_chapters": 5
+    },
+    "1092": {
+      "ta": "1092",
+      "chapter_path": "/guidance/ta1092/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1092_discussion.html",
+      "chars": 73573,
+      "n_chapters": 5
+    },
+    "1091": {
+      "ta": "1091",
+      "chapter_path": "/guidance/ta1091/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1091_discussion.html",
+      "chars": 70614,
+      "n_chapters": 4
+    },
+    "1090": {
+      "ta": "1090",
+      "chapter_path": "/guidance/ta1090/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1090_discussion.html",
+      "chars": 58147,
+      "n_chapters": 5
+    },
+    "1086": {
+      "ta": "1086",
+      "chapter_path": "/guidance/ta1086/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1086_discussion.html",
+      "chars": 78118,
+      "n_chapters": 5
+    },
+    "1079": {
+      "ta": "1079",
+      "chapter_path": "/guidance/ta1079/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1079_discussion.html",
+      "chars": 82836,
+      "n_chapters": 5
+    },
+    "1077": {
+      "ta": "1077",
+      "chapter_path": "/guidance/ta1077/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1077_discussion.html",
+      "chars": 51580,
+      "n_chapters": 5
+    },
+    "1074": {
+      "ta": "1074",
+      "chapter_path": "/guidance/ta1074/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1074_discussion.html",
+      "chars": 76031,
+      "n_chapters": 6
+    },
+    "1073": {
+      "ta": "1073",
+      "chapter_path": "/guidance/ta1073/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1073_discussion.html",
+      "chars": 88559,
+      "n_chapters": 5
+    },
+    "1070": {
+      "ta": "1070",
+      "chapter_path": "/guidance/ta1070/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1070_discussion.html",
+      "chars": 92328,
+      "n_chapters": 5
+    },
+    "1069": {
+      "ta": "1069",
+      "chapter_path": "/guidance/ta1069/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1069_discussion.html",
+      "chars": 104423,
+      "n_chapters": 4
+    },
+    "1065": {
+      "ta": "1065",
+      "chapter_path": "/guidance/ta1065/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1065_discussion.html",
+      "chars": 79226,
+      "n_chapters": 5
+    },
+    "1064": {
+      "ta": "1064",
+      "chapter_path": "/guidance/ta1064/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1064_discussion.html",
+      "chars": 63940,
+      "n_chapters": 5
+    },
+    "1063": {
+      "ta": "1063",
+      "chapter_path": "/guidance/ta1063/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1063_discussion.html",
+      "chars": 61359,
+      "n_chapters": 5
+    },
+    "1062": {
+      "ta": "1062",
+      "chapter_path": "/guidance/ta1062/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1062_discussion.html",
+      "chars": 95012,
+      "n_chapters": 5
+    },
+    "1060": {
+      "ta": "1060",
+      "chapter_path": "/guidance/ta1060/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1060_discussion.html",
+      "chars": 78391,
+      "n_chapters": 5
+    },
+    "1059": {
+      "ta": "1059",
+      "chapter_path": "/guidance/ta1059/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1059_discussion.html",
+      "chars": 62356,
+      "n_chapters": 5
+    },
+    "1057": {
+      "ta": "1057",
+      "chapter_path": "/guidance/ta1057/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1057_discussion.html",
+      "chars": 75557,
+      "n_chapters": 5
+    },
+    "1056": {
+      "ta": "1056",
+      "chapter_path": "/guidance/ta1056/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1056_discussion.html",
+      "chars": 83674,
+      "n_chapters": 6
+    },
+    "1055": {
+      "ta": "1055",
+      "chapter_path": "/guidance/ta1055/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1055_discussion.html",
+      "chars": 111390,
+      "n_chapters": 5
+    },
+    "1054": {
+      "ta": "1054",
+      "chapter_path": "/guidance/ta1054/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1054_discussion.html",
+      "chars": 71436,
+      "n_chapters": 5
+    },
+    "1053": {
+      "ta": "1053",
+      "chapter_path": "/guidance/ta1053/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1053_discussion.html",
+      "chars": 60664,
+      "n_chapters": 5
+    },
+    "1051": {
+      "ta": "1051",
+      "chapter_path": "/guidance/ta1051/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1051_discussion.html",
+      "chars": 118464,
+      "n_chapters": 5
+    },
+    "1050": {
+      "ta": "1050",
+      "chapter_path": "/guidance/ta1050/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1050_discussion.html",
+      "chars": 121817,
+      "n_chapters": 5
+    },
+    "1049": {
+      "ta": "1049",
+      "chapter_path": "/guidance/ta1049/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1049_discussion.html",
+      "chars": 59228,
+      "n_chapters": 5
+    },
+    "1048": {
+      "ta": "1048",
+      "chapter_path": "/guidance/ta1048/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1048_discussion.html",
+      "chars": 85638,
+      "n_chapters": 5
+    },
+    "1046": {
+      "ta": "1046",
+      "chapter_path": "/guidance/ta1046/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1046_discussion.html",
+      "chars": 68805,
+      "n_chapters": 4
+    },
+    "1045": {
+      "ta": "1045",
+      "chapter_path": "/guidance/ta1045/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1045_discussion.html",
+      "chars": 84690,
+      "n_chapters": 6
+    },
+    "1044": {
+      "ta": "1044",
+      "chapter_path": "/guidance/ta1044/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1044_discussion.html",
+      "chars": 154897,
+      "n_chapters": 5
+    },
+    "1043": {
+      "ta": "1043",
+      "chapter_path": "/guidance/ta1043/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1043_discussion.html",
+      "chars": 68124,
+      "n_chapters": 5
+    },
+    "1042": {
+      "ta": "1042",
+      "chapter_path": "/guidance/ta1042/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1042_discussion.html",
+      "chars": 60440,
+      "n_chapters": 5
+    },
+    "1039": {
+      "ta": "1039",
+      "chapter_path": "/guidance/ta1039/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1039_discussion.html",
+      "chars": 54412,
+      "n_chapters": 5
+    },
+    "1037": {
+      "ta": "1037",
+      "chapter_path": "/guidance/ta1037/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1037_discussion.html",
+      "chars": 84973,
+      "n_chapters": 5
+    },
+    "1036": {
+      "ta": "1036",
+      "chapter_path": "/guidance/ta1036/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1036_discussion.html",
+      "chars": 76406,
+      "n_chapters": 5
+    },
+    "1035": {
+      "ta": "1035",
+      "chapter_path": "/guidance/ta1035/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1035_discussion.html",
+      "chars": 71041,
+      "n_chapters": 5
+    },
+    "1034": {
+      "ta": "1034",
+      "chapter_path": "/guidance/ta1034/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1034_discussion.html",
+      "chars": 69495,
+      "n_chapters": 6
+    },
+    "1033": {
+      "ta": "1033",
+      "chapter_path": "/guidance/ta1033/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1033_discussion.html",
+      "chars": 103440,
+      "n_chapters": 4
+    },
+    "1031": {
+      "ta": "1031",
+      "chapter_path": "/guidance/ta1031/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1031_discussion.html",
+      "chars": 96017,
+      "n_chapters": 5
+    },
+    "1030": {
+      "ta": "1030",
+      "chapter_path": "/guidance/ta1030/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1030_discussion.html",
+      "chars": 86462,
+      "n_chapters": 5
+    },
+    "1027": {
+      "ta": "1027",
+      "chapter_path": "/guidance/ta1027/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1027_discussion.html",
+      "chars": 89013,
+      "n_chapters": 5
+    },
+    "1026": {
+      "ta": "1026",
+      "chapter_path": "/guidance/ta1026/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1026_discussion.html",
+      "chars": 134296,
+      "n_chapters": 6
+    },
+    "1023": {
+      "ta": "1023",
+      "chapter_path": "/guidance/ta1023/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1023_discussion.html",
+      "chars": 74079,
+      "n_chapters": 5
+    },
+    "1018": {
+      "ta": "1018",
+      "chapter_path": "/guidance/ta1018/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1018_discussion.html",
+      "chars": 70303,
+      "n_chapters": 5
+    },
+    "1017": {
+      "ta": "1017",
+      "chapter_path": "/guidance/ta1017/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1017_discussion.html",
+      "chars": 71403,
+      "n_chapters": 5
+    },
+    "1016": {
+      "ta": "1016",
+      "chapter_path": "/guidance/ta1016/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1016_discussion.html",
+      "chars": 61359,
+      "n_chapters": 5
+    },
+    "1015": {
+      "ta": "1015",
+      "chapter_path": "/guidance/ta1015/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1015_discussion.html",
+      "chars": 72453,
+      "n_chapters": 5
+    },
+    "1013": {
+      "ta": "1013",
+      "chapter_path": "/guidance/ta1013/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1013_discussion.html",
+      "chars": 52680,
+      "n_chapters": 5
+    },
+    "1012": {
+      "ta": "1012",
+      "chapter_path": "/guidance/ta1012/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1012_discussion.html",
+      "chars": 63231,
+      "n_chapters": 5
+    },
+    "1011": {
+      "ta": "1011",
+      "chapter_path": "/guidance/ta1011/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1011_discussion.html",
+      "chars": 94143,
+      "n_chapters": 5
+    },
+    "1010": {
+      "ta": "1010",
+      "chapter_path": "/guidance/ta1010/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1010_discussion.html",
+      "chars": 74759,
+      "n_chapters": 5
+    },
+    "1009": {
+      "ta": "1009",
+      "chapter_path": "/guidance/ta1009/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1009_discussion.html",
+      "chars": 45336,
+      "n_chapters": 5
+    },
+    "1008": {
+      "ta": "1008",
+      "chapter_path": "/guidance/ta1008/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1008_discussion.html",
+      "chars": 80067,
+      "n_chapters": 5
+    },
+    "1005": {
+      "ta": "1005",
+      "chapter_path": "/guidance/ta1005/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1005_discussion.html",
+      "chars": 46673,
+      "n_chapters": 5
+    },
+    "1003": {
+      "ta": "1003",
+      "chapter_path": "/guidance/ta1003/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1003_discussion.html",
+      "chars": 99892,
+      "n_chapters": 5
+    },
+    "1002": {
+      "ta": "1002",
+      "chapter_path": "/guidance/ta1002/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1002_discussion.html",
+      "chars": 75433,
+      "n_chapters": 5
+    },
+    "1001": {
+      "ta": "1001",
+      "chapter_path": "/guidance/ta1001/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1001_discussion.html",
+      "chars": 47693,
+      "n_chapters": 5
+    },
+    "1000": {
+      "ta": "1000",
+      "chapter_path": "/guidance/ta1000/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA1000_discussion.html",
+      "chars": 61138,
+      "n_chapters": 5
+    },
+    "997": {
+      "ta": "997",
+      "chapter_path": "/guidance/ta997/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0997_discussion.html",
+      "chars": 58914,
+      "n_chapters": 5
+    },
+    "996": {
+      "ta": "996",
+      "chapter_path": "/guidance/ta996/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0996_discussion.html",
+      "chars": 68774,
+      "n_chapters": 5
+    },
+    "995": {
+      "ta": "995",
+      "chapter_path": "/guidance/ta995/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0995_discussion.html",
+      "chars": 62883,
+      "n_chapters": 5
+    },
+    "993": {
+      "ta": "993",
+      "chapter_path": "/guidance/ta993/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0993_discussion.html",
+      "chars": 93193,
+      "n_chapters": 5
+    },
+    "992": {
+      "ta": "992",
+      "chapter_path": "/guidance/ta992/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0992_discussion.html",
+      "chars": 81927,
+      "n_chapters": 4
+    },
+    "991": {
+      "ta": "991",
+      "chapter_path": "/guidance/ta991/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0991_discussion.html",
+      "chars": 49899,
+      "n_chapters": 5
+    },
+    "989": {
+      "ta": "989",
+      "chapter_path": "/guidance/ta989/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0989_discussion.html",
+      "chars": 67659,
+      "n_chapters": 5
+    },
+    "988": {
+      "ta": "988",
+      "chapter_path": "/guidance/ta988/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0988_discussion.html",
+      "chars": 101615,
+      "n_chapters": 5
+    },
+    "986": {
+      "ta": "986",
+      "chapter_path": "/guidance/ta986/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0986_discussion.html",
+      "chars": 52893,
+      "n_chapters": 5
+    },
+    "984": {
+      "ta": "984",
+      "chapter_path": "/guidance/ta984/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0984_discussion.html",
+      "chars": 55445,
+      "n_chapters": 5
+    },
+    "983": {
+      "ta": "983",
+      "chapter_path": "/guidance/ta983/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0983_discussion.html",
+      "chars": 60466,
+      "n_chapters": 4
+    },
+    "979": {
+      "ta": "979",
+      "chapter_path": "/guidance/ta979/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0979_discussion.html",
+      "chars": 58814,
+      "n_chapters": 5
+    },
+    "977": {
+      "ta": "977",
+      "chapter_path": "/guidance/ta977/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0977_discussion.html",
+      "chars": 58628,
+      "n_chapters": 5
+    },
+    "975": {
+      "ta": "975",
+      "chapter_path": "/guidance/ta975/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0975_discussion.html",
+      "chars": 61807,
+      "n_chapters": 5
+    },
+    "974": {
+      "ta": "974",
+      "chapter_path": "/guidance/ta974/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0974_discussion.html",
+      "chars": 76984,
+      "n_chapters": 5
+    },
+    "973": {
+      "ta": "973",
+      "chapter_path": "/guidance/ta973/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0973_discussion.html",
+      "chars": 48542,
+      "n_chapters": 6
+    },
+    "971": {
+      "ta": "971",
+      "chapter_path": "/guidance/ta971/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0971_discussion.html",
+      "chars": 149911,
+      "n_chapters": 5
+    },
+    "970": {
+      "ta": "970",
+      "chapter_path": "/guidance/ta970/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0970_discussion.html",
+      "chars": 51785,
+      "n_chapters": 5
+    },
+    "967": {
+      "ta": "967",
+      "chapter_path": "/guidance/ta967/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0967_discussion.html",
+      "chars": 62690,
+      "n_chapters": 5
+    },
+    "964": {
+      "ta": "964",
+      "chapter_path": "/guidance/ta964/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0964_discussion.html",
+      "chars": 42340,
+      "n_chapters": 6
+    },
+    "962": {
+      "ta": "962",
+      "chapter_path": "/guidance/ta962/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0962_discussion.html",
+      "chars": 55275,
+      "n_chapters": 5
+    },
+    "959": {
+      "ta": "959",
+      "chapter_path": "/guidance/ta959/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0959_discussion.html",
+      "chars": 100181,
+      "n_chapters": 5
+    },
+    "958": {
+      "ta": "958",
+      "chapter_path": "/guidance/ta958/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0958_discussion.html",
+      "chars": 78637,
+      "n_chapters": 5
+    },
+    "957": {
+      "ta": "957",
+      "chapter_path": "/guidance/ta957/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0957_discussion.html",
+      "chars": 49492,
+      "n_chapters": 5
+    },
+    "955": {
+      "ta": "955",
+      "chapter_path": "/guidance/ta955/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0955_discussion.html",
+      "chars": 61657,
+      "n_chapters": 4
+    },
+    "954": {
+      "ta": "954",
+      "chapter_path": "/guidance/ta954/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0954_discussion.html",
+      "chars": 98293,
+      "n_chapters": 5
+    },
+    "952": {
+      "ta": "952",
+      "chapter_path": "/guidance/ta952/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0952_discussion.html",
+      "chars": 87079,
+      "n_chapters": 5
+    },
+    "951": {
+      "ta": "951",
+      "chapter_path": "/guidance/ta951/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0951_discussion.html",
+      "chars": 56359,
+      "n_chapters": 5
+    },
+    "950": {
+      "ta": "950",
+      "chapter_path": "/guidance/ta950/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0950_discussion.html",
+      "chars": 50240,
+      "n_chapters": 5
+    },
+    "949": {
+      "ta": "949",
+      "chapter_path": "/guidance/ta949/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0949_discussion.html",
+      "chars": 73061,
+      "n_chapters": 5
+    },
+    "948": {
+      "ta": "948",
+      "chapter_path": "/guidance/ta948/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0948_discussion.html",
+      "chars": 56282,
+      "n_chapters": 5
+    },
+    "947": {
+      "ta": "947",
+      "chapter_path": "/guidance/ta947/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0947_discussion.html",
+      "chars": 55795,
+      "n_chapters": 5
+    },
+    "946": {
+      "ta": "946",
+      "chapter_path": "/guidance/ta946/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0946_discussion.html",
+      "chars": 48481,
+      "n_chapters": 5
+    },
+    "944": {
+      "ta": "944",
+      "chapter_path": "/guidance/ta944/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0944_discussion.html",
+      "chars": 57235,
+      "n_chapters": 5
+    },
+    "943": {
+      "ta": "943",
+      "chapter_path": "/guidance/ta943/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0943_discussion.html",
+      "chars": 67967,
+      "n_chapters": 6
+    },
+    "939": {
+      "ta": "939",
+      "chapter_path": "/guidance/ta939/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0939_discussion.html",
+      "chars": 37775,
+      "n_chapters": 5
+    },
+    "935": {
+      "ta": "935",
+      "chapter_path": "/guidance/ta935/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0935_discussion.html",
+      "chars": 90941,
+      "n_chapters": 5
+    },
+    "934": {
+      "ta": "934",
+      "chapter_path": "/guidance/ta934/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0934_discussion.html",
+      "chars": 92515,
+      "n_chapters": 5
+    },
+    "931": {
+      "ta": "931",
+      "chapter_path": "/guidance/ta931/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0931_discussion.html",
+      "chars": 69023,
+      "n_chapters": 5
+    },
+    "930": {
+      "ta": "930",
+      "chapter_path": "/guidance/ta930/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0930_discussion.html",
+      "chars": 108014,
+      "n_chapters": 4
+    },
+    "928": {
+      "ta": "928",
+      "chapter_path": "/guidance/ta928/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0928_discussion.html",
+      "chars": 72040,
+      "n_chapters": 4
+    },
+    "927": {
+      "ta": "927",
+      "chapter_path": "/guidance/ta927/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0927_discussion.html",
+      "chars": 54795,
+      "n_chapters": 6
+    },
+    "926": {
+      "ta": "926",
+      "chapter_path": "/guidance/ta926/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0926_discussion.html",
+      "chars": 72821,
+      "n_chapters": 5
+    },
+    "924": {
+      "ta": "924",
+      "chapter_path": "/guidance/ta924/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0924_discussion.html",
+      "chars": 66329,
+      "n_chapters": 6
+    },
+    "922": {
+      "ta": "922",
+      "chapter_path": "/guidance/ta922/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0922_discussion.html",
+      "chars": 108991,
+      "n_chapters": 5
+    },
+    "921": {
+      "ta": "921",
+      "chapter_path": "/guidance/ta921/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0921_discussion.html",
+      "chars": 91787,
+      "n_chapters": 5
+    },
+    "920": {
+      "ta": "920",
+      "chapter_path": "/guidance/ta920/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0920_discussion.html",
+      "chars": 46689,
+      "n_chapters": 6
+    },
+    "919": {
+      "ta": "919",
+      "chapter_path": "/guidance/ta919/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0919_discussion.html",
+      "chars": 82701,
+      "n_chapters": 5
+    },
+    "917": {
+      "ta": "917",
+      "chapter_path": "/guidance/ta917/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0917_discussion.html",
+      "chars": 82479,
+      "n_chapters": 5
+    },
+    "915": {
+      "ta": "915",
+      "chapter_path": "/guidance/ta915/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0915_discussion.html",
+      "chars": 58829,
+      "n_chapters": 5
+    },
+    "914": {
+      "ta": "914",
+      "chapter_path": "/guidance/ta914/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0914_discussion.html",
+      "chars": 52289,
+      "n_chapters": 5
+    },
+    "913": {
+      "ta": "913",
+      "chapter_path": "/guidance/ta913/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0913_discussion.html",
+      "chars": 58785,
+      "n_chapters": 6
+    },
+    "912": {
+      "ta": "912",
+      "chapter_path": "/guidance/ta912/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0912_discussion.html",
+      "chars": 59652,
+      "n_chapters": 5
+    },
+    "911": {
+      "ta": "911",
+      "chapter_path": "/guidance/ta911/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0911_discussion.html",
+      "chars": 52743,
+      "n_chapters": 5
+    },
+    "908": {
+      "ta": "908",
+      "chapter_path": "/guidance/ta908/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0908_discussion.html",
+      "chars": 49273,
+      "n_chapters": 5
+    },
+    "907": {
+      "ta": "907",
+      "chapter_path": "/guidance/ta907/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0907_discussion.html",
+      "chars": 53350,
+      "n_chapters": 5
+    },
+    "906": {
+      "ta": "906",
+      "chapter_path": "/guidance/ta906/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0906_discussion.html",
+      "chars": 58937,
+      "n_chapters": 6
+    },
+    "905": {
+      "ta": "905",
+      "chapter_path": "/guidance/ta905/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0905_discussion.html",
+      "chars": 35499,
+      "n_chapters": 5
+    },
+    "904": {
+      "ta": "904",
+      "chapter_path": "/guidance/ta904/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0904_discussion.html",
+      "chars": 71110,
+      "n_chapters": 5
+    },
+    "903": {
+      "ta": "903",
+      "chapter_path": "/guidance/ta903/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0903_discussion.html",
+      "chars": 67280,
+      "n_chapters": 5
+    },
+    "902": {
+      "ta": "902",
+      "chapter_path": "/guidance/ta902/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0902_discussion.html",
+      "chars": 89945,
+      "n_chapters": 5
+    },
+    "900": {
+      "ta": "900",
+      "chapter_path": "/guidance/ta900/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0900_discussion.html",
+      "chars": 94467,
+      "n_chapters": 6
+    },
+    "898": {
+      "ta": "898",
+      "chapter_path": "/guidance/ta898/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0898_discussion.html",
+      "chars": 59496,
+      "n_chapters": 5
+    },
+    "897": {
+      "ta": "897",
+      "chapter_path": "/guidance/ta897/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0897_discussion.html",
+      "chars": 58919,
+      "n_chapters": 5
+    },
+    "896": {
+      "ta": "896",
+      "chapter_path": "/guidance/ta896/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0896_discussion.html",
+      "chars": 73466,
+      "n_chapters": 5
+    },
+    "895": {
+      "ta": "895",
+      "chapter_path": "/guidance/ta895/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0895_discussion.html",
+      "chars": 65597,
+      "n_chapters": 5
+    },
+    "894": {
+      "ta": "894",
+      "chapter_path": "/guidance/ta894/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0894_discussion.html",
+      "chars": 84012,
+      "n_chapters": 4
+    },
+    "893": {
+      "ta": "893",
+      "chapter_path": "/guidance/ta893/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0893_discussion.html",
+      "chars": 77549,
+      "n_chapters": 6
+    },
+    "892": {
+      "ta": "892",
+      "chapter_path": "/guidance/ta892/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0892_discussion.html",
+      "chars": 71155,
+      "n_chapters": 4
+    },
+    "891": {
+      "ta": "891",
+      "chapter_path": "/guidance/ta891/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0891_discussion.html",
+      "chars": 65357,
+      "n_chapters": 5
+    },
+    "890": {
+      "ta": "890",
+      "chapter_path": "/guidance/ta890/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0890_discussion.html",
+      "chars": 56432,
+      "n_chapters": 5
+    },
+    "888": {
+      "ta": "888",
+      "chapter_path": "/guidance/ta888/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0888_discussion.html",
+      "chars": 59274,
+      "n_chapters": 6
+    },
+    "887": {
+      "ta": "887",
+      "chapter_path": "/guidance/ta887/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0887_discussion.html",
+      "chars": 115707,
+      "n_chapters": 5
+    },
+    "886": {
+      "ta": "886",
+      "chapter_path": "/guidance/ta886/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0886_discussion.html",
+      "chars": 50424,
+      "n_chapters": 5
+    },
+    "883": {
+      "ta": "883",
+      "chapter_path": "/guidance/ta883/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0883_discussion.html",
+      "chars": 73260,
+      "n_chapters": 4
+    },
+    "882": {
+      "ta": "882",
+      "chapter_path": "/guidance/ta882/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0882_discussion.html",
+      "chars": 60167,
+      "n_chapters": 5
+    },
+    "880": {
+      "ta": "880",
+      "chapter_path": "/guidance/ta880/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0880_discussion.html",
+      "chars": 81543,
+      "n_chapters": 5
+    },
+    "878": {
+      "ta": "878",
+      "chapter_path": "/guidance/ta878/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0878_discussion.html",
+      "chars": 127174,
+      "n_chapters": 7
+    },
+    "877": {
+      "ta": "877",
+      "chapter_path": "/guidance/ta877/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0877_discussion.html",
+      "chars": 87430,
+      "n_chapters": 6
+    },
+    "876": {
+      "ta": "876",
+      "chapter_path": "/guidance/ta876/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0876_discussion.html",
+      "chars": 42856,
+      "n_chapters": 5
+    },
+    "875": {
+      "ta": "875",
+      "chapter_path": "/guidance/ta875/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0875_discussion.html",
+      "chars": 101331,
+      "n_chapters": 6
+    },
+    "874": {
+      "ta": "874",
+      "chapter_path": "/guidance/ta874/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0874_discussion.html",
+      "chars": 70489,
+      "n_chapters": 5
+    },
+    "873": {
+      "ta": "873",
+      "chapter_path": "/guidance/ta873/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0873_discussion.html",
+      "chars": 94279,
+      "n_chapters": 5
+    },
+    "872": {
+      "ta": "872",
+      "chapter_path": "/guidance/ta872/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0872_discussion.html",
+      "chars": 52704,
+      "n_chapters": 5
+    },
+    "871": {
+      "ta": "871",
+      "chapter_path": "/guidance/ta871/chapter/3-Discussion",
+      "match_score": 98,
+      "file": "nice_chapters\\TA0871_discussion.html",
+      "chars": 27641,
+      "n_chapters": 6
+    },
+    "870": {
+      "ta": "870",
+      "chapter_path": "/guidance/ta870/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0870_discussion.html",
+      "chars": 56335,
+      "n_chapters": 5
+    },
+    "866": {
+      "ta": "866",
+      "chapter_path": "/guidance/ta866/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0866_discussion.html",
+      "chars": 64236,
+      "n_chapters": 5
+    },
+    "865": {
+      "ta": "865",
+      "chapter_path": "/guidance/ta865/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0865_discussion.html",
+      "chars": 76713,
+      "n_chapters": 5
+    },
+    "864": {
+      "ta": "864",
+      "chapter_path": "/guidance/ta864/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0864_discussion.html",
+      "chars": 41758,
+      "n_chapters": 5
+    },
+    "862": {
+      "ta": "862",
+      "chapter_path": "/guidance/ta862/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0862_discussion.html",
+      "chars": 58268,
+      "n_chapters": 5
+    },
+    "861": {
+      "ta": "861",
+      "chapter_path": "/guidance/ta861/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0861_discussion.html",
+      "chars": 28884,
+      "n_chapters": 6
+    },
+    "860": {
+      "ta": "860",
+      "chapter_path": "/guidance/ta860/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0860_discussion.html",
+      "chars": 74092,
+      "n_chapters": 5
+    },
+    "858": {
+      "ta": "858",
+      "chapter_path": "/guidance/ta858/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0858_discussion.html",
+      "chars": 63185,
+      "n_chapters": 5
+    },
+    "857": {
+      "ta": "857",
+      "chapter_path": "/guidance/ta857/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0857_discussion.html",
+      "chars": 62702,
+      "n_chapters": 5
+    },
+    "856": {
+      "ta": "856",
+      "chapter_path": "/guidance/ta856/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0856_discussion.html",
+      "chars": 44571,
+      "n_chapters": 5
+    },
+    "854": {
+      "ta": "854",
+      "chapter_path": "/guidance/ta854/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0854_discussion.html",
+      "chars": 159939,
+      "n_chapters": 5
+    },
+    "853": {
+      "ta": "853",
+      "chapter_path": "/guidance/ta853/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0853_discussion.html",
+      "chars": 96116,
+      "n_chapters": 5
+    },
+    "852": {
+      "ta": "852",
+      "chapter_path": "/guidance/ta852/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0852_discussion.html",
+      "chars": 51556,
+      "n_chapters": 5
+    },
+    "851": {
+      "ta": "851",
+      "chapter_path": "/guidance/ta851/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0851_discussion.html",
+      "chars": 63122,
+      "n_chapters": 5
+    },
+    "850": {
+      "ta": "850",
+      "chapter_path": "/guidance/ta850/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0850_discussion.html",
+      "chars": 80790,
+      "n_chapters": 4
+    },
+    "849": {
+      "ta": "849",
+      "chapter_path": "/guidance/ta849/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0849_discussion.html",
+      "chars": 44934,
+      "n_chapters": 5
+    },
+    "837": {
+      "ta": "837",
+      "chapter_path": "/guidance/ta837/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0837_discussion.html",
+      "chars": 61484,
+      "n_chapters": 5
+    },
+    "836": {
+      "ta": "836",
+      "chapter_path": "/guidance/ta836/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0836_discussion.html",
+      "chars": 39815,
+      "n_chapters": 5
+    },
+    "835": {
+      "ta": "835",
+      "chapter_path": "/guidance/ta835/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0835_discussion.html",
+      "chars": 94902,
+      "n_chapters": 5
+    },
+    "833": {
+      "ta": "833",
+      "chapter_path": "/guidance/ta833/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0833_discussion.html",
+      "chars": 77960,
+      "n_chapters": 5
+    },
+    "832": {
+      "ta": "832",
+      "chapter_path": "/guidance/ta832/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0832_discussion.html",
+      "chars": 66170,
+      "n_chapters": 5
+    },
+    "830": {
+      "ta": "830",
+      "chapter_path": "/guidance/ta830/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0830_discussion.html",
+      "chars": 48670,
+      "n_chapters": 5
+    },
+    "829": {
+      "ta": "829",
+      "chapter_path": "/guidance/ta829/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0829_discussion.html",
+      "chars": 40656,
+      "n_chapters": 6
+    },
+    "828": {
+      "ta": "828",
+      "chapter_path": "/guidance/ta828/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0828_discussion.html",
+      "chars": 48668,
+      "n_chapters": 5
+    },
+    "827": {
+      "ta": "827",
+      "chapter_path": "/guidance/ta827/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0827_discussion.html",
+      "chars": 78622,
+      "n_chapters": 5
+    },
+    "824": {
+      "ta": "824",
+      "chapter_path": "/guidance/ta824/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0824_discussion.html",
+      "chars": 62045,
+      "n_chapters": 5
+    },
+    "821": {
+      "ta": "821",
+      "chapter_path": "/guidance/ta821/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0821_discussion.html",
+      "chars": 45538,
+      "n_chapters": 5
+    },
+    "820": {
+      "ta": "820",
+      "chapter_path": "/guidance/ta820/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0820_discussion.html",
+      "chars": 32243,
+      "n_chapters": 5
+    },
+    "819": {
+      "ta": "819",
+      "chapter_path": "/guidance/ta819/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0819_discussion.html",
+      "chars": 62342,
+      "n_chapters": 5
+    },
+    "818": {
+      "ta": "818",
+      "chapter_path": "/guidance/ta818/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0818_discussion.html",
+      "chars": 97288,
+      "n_chapters": 5
+    },
+    "817": {
+      "ta": "817",
+      "chapter_path": "/guidance/ta817/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0817_discussion.html",
+      "chars": 63787,
+      "n_chapters": 5
+    },
+    "816": {
+      "ta": "816",
+      "chapter_path": "/guidance/ta816/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0816_discussion.html",
+      "chars": 89216,
+      "n_chapters": 5
+    },
+    "815": {
+      "ta": "815",
+      "chapter_path": "/guidance/ta815/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0815_discussion.html",
+      "chars": 73090,
+      "n_chapters": 5
+    },
+    "814": {
+      "ta": "814",
+      "chapter_path": "/guidance/ta814/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0814_discussion.html",
+      "chars": 86082,
+      "n_chapters": 5
+    },
+    "813": {
+      "ta": "813",
+      "chapter_path": "/guidance/ta813/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0813_discussion.html",
+      "chars": 50250,
+      "n_chapters": 5
+    },
+    "812": {
+      "ta": "812",
+      "chapter_path": "/guidance/ta812/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0812_discussion.html",
+      "chars": 55915,
+      "n_chapters": 4
+    },
+    "810": {
+      "ta": "810",
+      "chapter_path": "/guidance/ta810/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0810_discussion.html",
+      "chars": 50900,
+      "n_chapters": 5
+    },
+    "809": {
+      "ta": "809",
+      "chapter_path": "/guidance/ta809/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0809_discussion.html",
+      "chars": 81556,
+      "n_chapters": 5
+    },
+    "808": {
+      "ta": "808",
+      "chapter_path": "/guidance/ta808/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0808_discussion.html",
+      "chars": 93543,
+      "n_chapters": 5
+    },
+    "807": {
+      "ta": "807",
+      "chapter_path": "/guidance/ta807/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0807_discussion.html",
+      "chars": 79611,
+      "n_chapters": 5
+    },
+    "805": {
+      "ta": "805",
+      "chapter_path": "/guidance/ta805/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0805_discussion.html",
+      "chars": 74169,
+      "n_chapters": 5
+    },
+    "804": {
+      "ta": "804",
+      "chapter_path": "/guidance/ta804/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0804_discussion.html",
+      "chars": 97336,
+      "n_chapters": 5
+    },
+    "803": {
+      "ta": "803",
+      "chapter_path": "/guidance/ta803/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0803_discussion.html",
+      "chars": 33791,
+      "n_chapters": 5
+    },
+    "802": {
+      "ta": "802",
+      "chapter_path": "/guidance/ta802/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0802_discussion.html",
+      "chars": 51466,
+      "n_chapters": 5
+    },
+    "801": {
+      "ta": "801",
+      "chapter_path": "/guidance/ta801/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0801_discussion.html",
+      "chars": 62793,
+      "n_chapters": 5
+    },
+    "800": {
+      "ta": "800",
+      "chapter_path": "/guidance/ta800/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0800_discussion.html",
+      "chars": 25797,
+      "n_chapters": 5
+    },
+    "799": {
+      "ta": "799",
+      "chapter_path": "/guidance/ta799/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0799_discussion.html",
+      "chars": 27738,
+      "n_chapters": 5
+    },
+    "798": {
+      "ta": "798",
+      "chapter_path": "/guidance/ta798/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0798_discussion.html",
+      "chars": 49375,
+      "n_chapters": 5
+    },
+    "796": {
+      "ta": "796",
+      "chapter_path": "/guidance/ta796/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0796_discussion.html",
+      "chars": 51259,
+      "n_chapters": 5
+    },
+    "795": {
+      "ta": "795",
+      "chapter_path": "/guidance/ta795/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0795_discussion.html",
+      "chars": 55996,
+      "n_chapters": 4
+    },
+    "794": {
+      "ta": "794",
+      "chapter_path": "/guidance/ta794/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0794_discussion.html",
+      "chars": 33066,
+      "n_chapters": 5
+    },
+    "792": {
+      "ta": "792",
+      "chapter_path": "/guidance/ta792/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0792_discussion.html",
+      "chars": 64628,
+      "n_chapters": 5
+    },
+    "791": {
+      "ta": "791",
+      "chapter_path": "/guidance/ta791/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0791_discussion.html",
+      "chars": 83009,
+      "n_chapters": 5
+    },
+    "789": {
+      "ta": "789",
+      "chapter_path": "/guidance/ta789/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0789_discussion.html",
+      "chars": 74379,
+      "n_chapters": 6
+    },
+    "788": {
+      "ta": "788",
+      "chapter_path": "/guidance/ta788/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0788_discussion.html",
+      "chars": 86017,
+      "n_chapters": 5
+    },
+    "787": {
+      "ta": "787",
+      "chapter_path": "/guidance/ta787/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0787_discussion.html",
+      "chars": 52217,
+      "n_chapters": 5
+    },
+    "786": {
+      "ta": "786",
+      "chapter_path": "/guidance/ta786/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0786_discussion.html",
+      "chars": 77482,
+      "n_chapters": 5
+    },
+    "784": {
+      "ta": "784",
+      "chapter_path": "/guidance/ta784/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0784_discussion.html",
+      "chars": 60172,
+      "n_chapters": 5
+    },
+    "783": {
+      "ta": "783",
+      "chapter_path": "/guidance/ta783/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0783_discussion.html",
+      "chars": 64286,
+      "n_chapters": 5
+    },
+    "781": {
+      "ta": "781",
+      "chapter_path": "/guidance/ta781/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0781_discussion.html",
+      "chars": 65119,
+      "n_chapters": 5
+    },
+    "780": {
+      "ta": "780",
+      "chapter_path": "/guidance/ta780/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0780_discussion.html",
+      "chars": 64299,
+      "n_chapters": 5
+    },
+    "778": {
+      "ta": "778",
+      "chapter_path": "/guidance/ta778/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0778_discussion.html",
+      "chars": 45803,
+      "n_chapters": 5
+    },
+    "777": {
+      "ta": "777",
+      "chapter_path": "/guidance/ta777/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0777_discussion.html",
+      "chars": 69171,
+      "n_chapters": 4
+    },
+    "776": {
+      "ta": "776",
+      "chapter_path": "/guidance/ta776/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0776_discussion.html",
+      "chars": 58550,
+      "n_chapters": 4
+    },
+    "773": {
+      "ta": "773",
+      "chapter_path": "/guidance/ta773/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0773_discussion.html",
+      "chars": 49126,
+      "n_chapters": 5
+    },
+    "772": {
+      "ta": "772",
+      "chapter_path": "/guidance/ta772/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0772_discussion.html",
+      "chars": 75585,
+      "n_chapters": 5
+    },
+    "770": {
+      "ta": "770",
+      "chapter_path": "/guidance/ta770/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0770_discussion.html",
+      "chars": 67365,
+      "n_chapters": 5
+    },
+    "768": {
+      "ta": "768",
+      "chapter_path": "/guidance/ta768/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0768_discussion.html",
+      "chars": 61039,
+      "n_chapters": 5
+    },
+    "767": {
+      "ta": "767",
+      "chapter_path": "/guidance/ta767/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0767_discussion.html",
+      "chars": 69668,
+      "n_chapters": 5
+    },
+    "766": {
+      "ta": "766",
+      "chapter_path": "/guidance/ta766/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0766_discussion.html",
+      "chars": 54552,
+      "n_chapters": 5
+    },
+    "765": {
+      "ta": "765",
+      "chapter_path": "/guidance/ta765/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0765_discussion.html",
+      "chars": 51930,
+      "n_chapters": 5
+    },
+    "764": {
+      "ta": "764",
+      "chapter_path": "/guidance/ta764/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0764_discussion.html",
+      "chars": 105551,
+      "n_chapters": 6
+    },
+    "763": {
+      "ta": "763",
+      "chapter_path": "/guidance/ta763/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0763_discussion.html",
+      "chars": 96547,
+      "n_chapters": 5
+    },
+    "758": {
+      "ta": "758",
+      "chapter_path": "/guidance/ta758/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0758_discussion.html",
+      "chars": 76650,
+      "n_chapters": 5
+    },
+    "757": {
+      "ta": "757",
+      "chapter_path": "/guidance/ta757/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0757_discussion.html",
+      "chars": 85849,
+      "n_chapters": 5
+    },
+    "754": {
+      "ta": "754",
+      "chapter_path": "/guidance/ta754/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0754_discussion.html",
+      "chars": 70745,
+      "n_chapters": 5
+    },
+    "753": {
+      "ta": "753",
+      "chapter_path": "/guidance/ta753/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0753_discussion.html",
+      "chars": 82498,
+      "n_chapters": 6
+    },
+    "752": {
+      "ta": "752",
+      "chapter_path": "/guidance/ta752/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0752_discussion.html",
+      "chars": 83126,
+      "n_chapters": 5
+    },
+    "751": {
+      "ta": "751",
+      "chapter_path": "/guidance/ta751/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0751_discussion.html",
+      "chars": 72361,
+      "n_chapters": 5
+    },
+    "748": {
+      "ta": "748",
+      "chapter_path": "/guidance/ta748/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0748_discussion.html",
+      "chars": 70225,
+      "n_chapters": 5
+    },
+    "747": {
+      "ta": "747",
+      "chapter_path": "/guidance/ta747/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0747_discussion.html",
+      "chars": 104797,
+      "n_chapters": 5
+    },
+    "746": {
+      "ta": "746",
+      "chapter_path": "/guidance/ta746/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0746_discussion.html",
+      "chars": 54549,
+      "n_chapters": 5
+    },
+    "744": {
+      "ta": "744",
+      "chapter_path": "/guidance/ta744/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0744_discussion.html",
+      "chars": 78216,
+      "n_chapters": 5
+    },
+    "741": {
+      "ta": "741",
+      "chapter_path": "/guidance/ta741/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0741_discussion.html",
+      "chars": 103635,
+      "n_chapters": 5
+    },
+    "740": {
+      "ta": "740",
+      "chapter_path": "/guidance/ta740/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0740_discussion.html",
+      "chars": 83974,
+      "n_chapters": 5
+    },
+    "739": {
+      "ta": "739",
+      "chapter_path": "/guidance/ta739/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0739_discussion.html",
+      "chars": 54398,
+      "n_chapters": 5
+    },
+    "738": {
+      "ta": "738",
+      "chapter_path": "/guidance/ta738/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0738_discussion.html",
+      "chars": 67717,
+      "n_chapters": 5
+    },
+    "737": {
+      "ta": "737",
+      "chapter_path": "/guidance/ta737/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0737_discussion.html",
+      "chars": 63883,
+      "n_chapters": 6
+    },
+    "736": {
+      "ta": "736",
+      "chapter_path": "/guidance/ta736/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0736_discussion.html",
+      "chars": 74578,
+      "n_chapters": 5
+    },
+    "735": {
+      "ta": "735",
+      "chapter_path": "/guidance/ta735/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0735_discussion.html",
+      "chars": 31647,
+      "n_chapters": 5
+    },
+    "734": {
+      "ta": "734",
+      "chapter_path": "/guidance/ta734/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0734_discussion.html",
+      "chars": 37811,
+      "n_chapters": 5
+    },
+    "733": {
+      "ta": "733",
+      "chapter_path": "/guidance/ta733/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0733_discussion.html",
+      "chars": 87358,
+      "n_chapters": 6
+    },
+    "729": {
+      "ta": "729",
+      "chapter_path": "/guidance/ta729/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0729_discussion.html",
+      "chars": 139106,
+      "n_chapters": 5
+    },
+    "728": {
+      "ta": "728",
+      "chapter_path": "/guidance/ta728/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0728_discussion.html",
+      "chars": 56860,
+      "n_chapters": 5
+    },
+    "725": {
+      "ta": "725",
+      "chapter_path": "/guidance/ta725/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0725_discussion.html",
+      "chars": 60843,
+      "n_chapters": 5
+    },
+    "724": {
+      "ta": "724",
+      "chapter_path": "/guidance/ta724/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0724_discussion.html",
+      "chars": 93502,
+      "n_chapters": 4
+    },
+    "723": {
+      "ta": "723",
+      "chapter_path": "/guidance/ta723/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0723_discussion.html",
+      "chars": 37623,
+      "n_chapters": 5
+    },
+    "722": {
+      "ta": "722",
+      "chapter_path": "/guidance/ta722/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0722_discussion.html",
+      "chars": 55499,
+      "n_chapters": 5
+    },
+    "720": {
+      "ta": "720",
+      "chapter_path": "/guidance/ta720/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0720_discussion.html",
+      "chars": 50926,
+      "n_chapters": 5
+    },
+    "719": {
+      "ta": "719",
+      "chapter_path": "/guidance/ta719/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0719_discussion.html",
+      "chars": 61260,
+      "n_chapters": 6
+    },
+    "716": {
+      "ta": "716",
+      "chapter_path": "/guidance/ta716/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0716_discussion.html",
+      "chars": 59197,
+      "n_chapters": 5
+    },
+    "715": {
+      "ta": "715",
+      "chapter_path": "/guidance/ta715/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0715_discussion.html",
+      "chars": 59381,
+      "n_chapters": 6
+    },
+    "713": {
+      "ta": "713",
+      "chapter_path": "/guidance/ta713/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0713_discussion.html",
+      "chars": 54573,
+      "n_chapters": 5
+    },
+    "712": {
+      "ta": "712",
+      "chapter_path": "/guidance/ta712/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0712_discussion.html",
+      "chars": 83294,
+      "n_chapters": 5
+    },
+    "710": {
+      "ta": "710",
+      "chapter_path": "/guidance/ta710/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0710_discussion.html",
+      "chars": 61760,
+      "n_chapters": 5
+    },
+    "709": {
+      "ta": "709",
+      "chapter_path": "/guidance/ta709/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0709_discussion.html",
+      "chars": 88824,
+      "n_chapters": 5
+    },
+    "708": {
+      "ta": "708",
+      "chapter_path": "/guidance/ta708/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0708_discussion.html",
+      "chars": 64810,
+      "n_chapters": 5
+    },
+    "707": {
+      "ta": "707",
+      "chapter_path": "/guidance/ta707/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0707_discussion.html",
+      "chars": 50102,
+      "n_chapters": 5
+    },
+    "706": {
+      "ta": "706",
+      "chapter_path": "/guidance/ta706/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0706_discussion.html",
+      "chars": 64925,
+      "n_chapters": 4
+    },
+    "705": {
+      "ta": "705",
+      "chapter_path": "/guidance/ta705/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0705_discussion.html",
+      "chars": 45415,
+      "n_chapters": 5
+    },
+    "704": {
+      "ta": "704",
+      "chapter_path": "/guidance/ta704/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0704_discussion.html",
+      "chars": 61316,
+      "n_chapters": 5
+    },
+    "699": {
+      "ta": "699",
+      "chapter_path": "/guidance/ta699/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0699_discussion.html",
+      "chars": 57062,
+      "n_chapters": 5
+    },
+    "698": {
+      "ta": "698",
+      "chapter_path": "/guidance/ta698/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0698_discussion.html",
+      "chars": 44190,
+      "n_chapters": 5
+    },
+    "697": {
+      "ta": "697",
+      "chapter_path": "/guidance/ta697/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0697_discussion.html",
+      "chars": 66129,
+      "n_chapters": 6
+    },
+    "695": {
+      "ta": "695",
+      "chapter_path": "/guidance/ta695/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0695_discussion.html",
+      "chars": 57105,
+      "n_chapters": 5
+    },
+    "694": {
+      "ta": "694",
+      "chapter_path": "/guidance/ta694/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0694_discussion.html",
+      "chars": 71000,
+      "n_chapters": 6
+    },
+    "692": {
+      "ta": "692",
+      "chapter_path": "/guidance/ta692/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0692_discussion.html",
+      "chars": 104488,
+      "n_chapters": 4
+    },
+    "691": {
+      "ta": "691",
+      "chapter_path": "/guidance/ta691/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0691_discussion.html",
+      "chars": 42518,
+      "n_chapters": 5
+    },
+    "689": {
+      "ta": "689",
+      "chapter_path": "/guidance/ta689/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0689_discussion.html",
+      "chars": 71724,
+      "n_chapters": 5
+    },
+    "688": {
+      "ta": "688",
+      "chapter_path": "/guidance/ta688/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0688_discussion.html",
+      "chars": 106500,
+      "n_chapters": 6
+    },
+    "687": {
+      "ta": "687",
+      "chapter_path": "/guidance/ta687/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0687_discussion.html",
+      "chars": 48737,
+      "n_chapters": 5
+    },
+    "685": {
+      "ta": "685",
+      "chapter_path": "/guidance/ta685/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0685_discussion.html",
+      "chars": 51151,
+      "n_chapters": 5
+    },
+    "684": {
+      "ta": "684",
+      "chapter_path": "/guidance/ta684/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0684_discussion.html",
+      "chars": 51967,
+      "n_chapters": 5
+    },
+    "683": {
+      "ta": "683",
+      "chapter_path": "/guidance/ta683/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0683_discussion.html",
+      "chars": 52804,
+      "n_chapters": 5
+    },
+    "682": {
+      "ta": "682",
+      "chapter_path": "/guidance/ta682/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0682_discussion.html",
+      "chars": 113249,
+      "n_chapters": 6
+    },
+    "681": {
+      "ta": "681",
+      "chapter_path": "/guidance/ta681/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0681_discussion.html",
+      "chars": 82165,
+      "n_chapters": 5
+    },
+    "680": {
+      "ta": "680",
+      "chapter_path": "/guidance/ta680/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0680_discussion.html",
+      "chars": 71591,
+      "n_chapters": 5
+    },
+    "679": {
+      "ta": "679",
+      "chapter_path": "/guidance/ta679/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0679_discussion.html",
+      "chars": 79590,
+      "n_chapters": 5
+    },
+    "677": {
+      "ta": "677",
+      "chapter_path": "/guidance/ta677/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0677_discussion.html",
+      "chars": 55683,
+      "n_chapters": 5
+    },
+    "676": {
+      "ta": "676",
+      "chapter_path": "/guidance/ta676/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0676_discussion.html",
+      "chars": 97599,
+      "n_chapters": 6
+    },
+    "672": {
+      "ta": "672",
+      "chapter_path": "/guidance/ta672/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0672_discussion.html",
+      "chars": 39899,
+      "n_chapters": 5
+    },
+    "671": {
+      "ta": "671",
+      "chapter_path": "/guidance/ta671/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0671_discussion.html",
+      "chars": 33835,
+      "n_chapters": 5
+    },
+    "670": {
+      "ta": "670",
+      "chapter_path": "/guidance/ta670/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0670_discussion.html",
+      "chars": 51774,
+      "n_chapters": 5
+    },
+    "668": {
+      "ta": "668",
+      "chapter_path": "/guidance/ta668/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0668_discussion.html",
+      "chars": 103539,
+      "n_chapters": 5
+    },
+    "667": {
+      "ta": "667",
+      "chapter_path": "/guidance/ta667/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0667_discussion.html",
+      "chars": 92915,
+      "n_chapters": 5
+    },
+    "666": {
+      "ta": "666",
+      "chapter_path": "/guidance/ta666/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0666_discussion.html",
+      "chars": 48734,
+      "n_chapters": 5
+    },
+    "665": {
+      "ta": "665",
+      "chapter_path": "/guidance/ta665/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0665_discussion.html",
+      "chars": 54602,
+      "n_chapters": 6
+    },
+    "664": {
+      "ta": "664",
+      "chapter_path": "/guidance/ta664/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0664_discussion.html",
+      "chars": 50915,
+      "n_chapters": 6
+    },
+    "661": {
+      "ta": "661",
+      "chapter_path": "/guidance/ta661/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0661_discussion.html",
+      "chars": 81645,
+      "n_chapters": 5
+    },
+    "660": {
+      "ta": "660",
+      "chapter_path": "/guidance/ta660/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0660_discussion.html",
+      "chars": 66206,
+      "n_chapters": 5
+    },
+    "659": {
+      "ta": "659",
+      "chapter_path": "/guidance/ta659/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0659_discussion.html",
+      "chars": 73214,
+      "n_chapters": 6
+    },
+    "657": {
+      "ta": "657",
+      "chapter_path": "/guidance/ta657/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0657_discussion.html",
+      "chars": 202848,
+      "n_chapters": 6
+    },
+    "656": {
+      "ta": "656",
+      "chapter_path": "/guidance/ta656/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0656_discussion.html",
+      "chars": 60499,
+      "n_chapters": 5
+    },
+    "655": {
+      "ta": "655",
+      "chapter_path": "/guidance/ta655/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0655_discussion.html",
+      "chars": 48355,
+      "n_chapters": 6
+    },
+    "654": {
+      "ta": "654",
+      "chapter_path": "/guidance/ta654/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0654_discussion.html",
+      "chars": 58894,
+      "n_chapters": 5
+    },
+    "653": {
+      "ta": "653",
+      "chapter_path": "/guidance/ta653/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0653_discussion.html",
+      "chars": 50421,
+      "n_chapters": 5
+    },
+    "651": {
+      "ta": "651",
+      "chapter_path": "/guidance/ta651/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0651_discussion.html",
+      "chars": 57184,
+      "n_chapters": 5
+    },
+    "650": {
+      "ta": "650",
+      "chapter_path": "/guidance/ta650/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0650_discussion.html",
+      "chars": 66483,
+      "n_chapters": 4
+    },
+    "649": {
+      "ta": "649",
+      "chapter_path": "/guidance/ta649/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0649_discussion.html",
+      "chars": 52958,
+      "n_chapters": 5
+    },
+    "643": {
+      "ta": "643",
+      "chapter_path": "/guidance/ta643/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0643_discussion.html",
+      "chars": 45695,
+      "n_chapters": 5
+    },
+    "642": {
+      "ta": "642",
+      "chapter_path": "/guidance/ta642/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0642_discussion.html",
+      "chars": 63739,
+      "n_chapters": 5
+    },
+    "641": {
+      "ta": "641",
+      "chapter_path": "/guidance/ta641/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0641_discussion.html",
+      "chars": 42048,
+      "n_chapters": 5
+    },
+    "640": {
+      "ta": "640",
+      "chapter_path": "/guidance/ta640/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0640_discussion.html",
+      "chars": 38834,
+      "n_chapters": 5
+    },
+    "639": {
+      "ta": "639",
+      "chapter_path": "/guidance/ta639/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0639_discussion.html",
+      "chars": 57050,
+      "n_chapters": 5
+    },
+    "638": {
+      "ta": "638",
+      "chapter_path": "/guidance/ta638/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0638_discussion.html",
+      "chars": 50356,
+      "n_chapters": 5
+    },
+    "633": {
+      "ta": "633",
+      "chapter_path": "/guidance/ta633/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0633_discussion.html",
+      "chars": 62820,
+      "n_chapters": 5
+    },
+    "632": {
+      "ta": "632",
+      "chapter_path": "/guidance/ta632/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0632_discussion.html",
+      "chars": 42269,
+      "n_chapters": 5
+    },
+    "630": {
+      "ta": "630",
+      "chapter_path": "/guidance/ta630/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0630_discussion.html",
+      "chars": 119635,
+      "n_chapters": 5
+    },
+    "629": {
+      "ta": "629",
+      "chapter_path": "/guidance/ta629/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0629_discussion.html",
+      "chars": 43108,
+      "n_chapters": 5
+    },
+    "628": {
+      "ta": "628",
+      "chapter_path": "/guidance/ta628/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0628_discussion.html",
+      "chars": 58100,
+      "n_chapters": 5
+    },
+    "627": {
+      "ta": "627",
+      "chapter_path": "/guidance/ta627/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0627_discussion.html",
+      "chars": 43377,
+      "n_chapters": 5
+    },
+    "626": {
+      "ta": "626",
+      "chapter_path": "/guidance/ta626/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0626_discussion.html",
+      "chars": 53671,
+      "n_chapters": 6
+    },
+    "624": {
+      "ta": "624",
+      "chapter_path": "/guidance/ta624/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0624_discussion.html",
+      "chars": 53649,
+      "n_chapters": 5
+    },
+    "623": {
+      "ta": "623",
+      "chapter_path": "/guidance/ta623/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0623_discussion.html",
+      "chars": 69192,
+      "n_chapters": 6
+    },
+    "617": {
+      "ta": "617",
+      "chapter_path": "/guidance/ta617/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0617_discussion.html",
+      "chars": 56049,
+      "n_chapters": 6
+    },
+    "616": {
+      "ta": "616",
+      "chapter_path": "/guidance/ta616/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0616_discussion.html",
+      "chars": 73241,
+      "n_chapters": 6
+    },
+    "615": {
+      "ta": "615",
+      "chapter_path": "/guidance/ta615/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0615_discussion.html",
+      "chars": 83246,
+      "n_chapters": 5
+    },
+    "614": {
+      "ta": "614",
+      "chapter_path": "/guidance/ta614/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0614_discussion.html",
+      "chars": 84505,
+      "n_chapters": 5
+    },
+    "612": {
+      "ta": "612",
+      "chapter_path": "/guidance/ta612/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0612_discussion.html",
+      "chars": 42334,
+      "n_chapters": 5
+    },
+    "610": {
+      "ta": "610",
+      "chapter_path": "/guidance/ta610/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0610_discussion.html",
+      "chars": 74139,
+      "n_chapters": 5
+    },
+    "607": {
+      "ta": "607",
+      "chapter_path": "/guidance/ta607/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0607_discussion.html",
+      "chars": 40989,
+      "n_chapters": 5
+    },
+    "606": {
+      "ta": "606",
+      "chapter_path": "/guidance/ta606/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0606_discussion.html",
+      "chars": 75828,
+      "n_chapters": 5
+    },
+    "605": {
+      "ta": "605",
+      "chapter_path": "/guidance/ta605/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0605_discussion.html",
+      "chars": 64811,
+      "n_chapters": 5
+    },
+    "604": {
+      "ta": "604",
+      "chapter_path": "/guidance/ta604/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0604_discussion.html",
+      "chars": 109983,
+      "n_chapters": 4
+    },
+    "596": {
+      "ta": "596",
+      "chapter_path": "/guidance/ta596/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0596_discussion.html",
+      "chars": 30985,
+      "n_chapters": 5
+    },
+    "595": {
+      "ta": "595",
+      "chapter_path": "/guidance/ta595/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0595_discussion.html",
+      "chars": 84781,
+      "n_chapters": 5
+    },
+    "591": {
+      "ta": "591",
+      "chapter_path": "/guidance/ta591/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0591_discussion.html",
+      "chars": 70947,
+      "n_chapters": 5
+    },
+    "590": {
+      "ta": "590",
+      "chapter_path": "/guidance/ta590/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0590_discussion.html",
+      "chars": 63684,
+      "n_chapters": 5
+    },
+    "589": {
+      "ta": "589",
+      "chapter_path": "/guidance/ta589/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0589_discussion.html",
+      "chars": 70808,
+      "n_chapters": 5
+    },
+    "587": {
+      "ta": "587",
+      "chapter_path": "/guidance/ta587/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0587_discussion.html",
+      "chars": 58206,
+      "n_chapters": 5
+    },
+    "586": {
+      "ta": "586",
+      "chapter_path": "/guidance/ta586/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0586_discussion.html",
+      "chars": 72229,
+      "n_chapters": 5
+    },
+    "585": {
+      "ta": "585",
+      "chapter_path": "/guidance/ta585/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0585_discussion.html",
+      "chars": 67707,
+      "n_chapters": 5
+    },
+    "584": {
+      "ta": "584",
+      "chapter_path": "/guidance/ta584/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0584_discussion.html",
+      "chars": 89916,
+      "n_chapters": 5
+    },
+    "583": {
+      "ta": "583",
+      "chapter_path": "/guidance/ta583/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0583_discussion.html",
+      "chars": 39101,
+      "n_chapters": 4
+    },
+    "580": {
+      "ta": "580",
+      "chapter_path": "/guidance/ta580/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0580_discussion.html",
+      "chars": 75052,
+      "n_chapters": 4
+    },
+    "577": {
+      "ta": "577",
+      "chapter_path": "/guidance/ta577/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0577_discussion.html",
+      "chars": 89456,
+      "n_chapters": 5
+    },
+    "575": {
+      "ta": "575",
+      "chapter_path": "/guidance/ta575/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0575_discussion.html",
+      "chars": 75228,
+      "n_chapters": 6
+    },
+    "574": {
+      "ta": "574",
+      "chapter_path": "/guidance/ta574/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0574_discussion.html",
+      "chars": 78641,
+      "n_chapters": 6
+    },
+    "572": {
+      "ta": "572",
+      "chapter_path": "/guidance/ta572/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0572_discussion.html",
+      "chars": 32853,
+      "n_chapters": 5
+    },
+    "571": {
+      "ta": "571",
+      "chapter_path": "/guidance/ta571/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0571_discussion.html",
+      "chars": 70858,
+      "n_chapters": 5
+    },
+    "569": {
+      "ta": "569",
+      "chapter_path": "/guidance/ta569/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0569_discussion.html",
+      "chars": 45146,
+      "n_chapters": 5
+    },
+    "565": {
+      "ta": "565",
+      "chapter_path": "/guidance/ta565/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0565_discussion.html",
+      "chars": 65733,
+      "n_chapters": 6
+    },
+    "563": {
+      "ta": "563",
+      "chapter_path": "/guidance/ta563/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0563_discussion.html",
+      "chars": 46426,
+      "n_chapters": 5
+    },
+    "562": {
+      "ta": "562",
+      "chapter_path": "/guidance/ta562/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0562_discussion.html",
+      "chars": 37343,
+      "n_chapters": 5
+    },
+    "561": {
+      "ta": "561",
+      "chapter_path": "/guidance/ta561/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0561_discussion.html",
+      "chars": 56316,
+      "n_chapters": 5
+    },
+    "556": {
+      "ta": "556",
+      "chapter_path": "/guidance/ta556/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0556_discussion.html",
+      "chars": 73467,
+      "n_chapters": 5
+    },
+    "555": {
+      "ta": "555",
+      "chapter_path": "/guidance/ta555/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0555_discussion.html",
+      "chars": 63052,
+      "n_chapters": 5
+    },
+    "552": {
+      "ta": "552",
+      "chapter_path": "/guidance/ta552/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0552_discussion.html",
+      "chars": 57959,
+      "n_chapters": 5
+    },
+    "551": {
+      "ta": "551",
+      "chapter_path": "/guidance/ta551/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0551_discussion.html",
+      "chars": 67383,
+      "n_chapters": 5
+    },
+    "550": {
+      "ta": "550",
+      "chapter_path": "/guidance/ta550/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0550_discussion.html",
+      "chars": 79975,
+      "n_chapters": 4
+    },
+    "547": {
+      "ta": "547",
+      "chapter_path": "/guidance/ta547/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0547_discussion.html",
+      "chars": 53988,
+      "n_chapters": 5
+    },
+    "546": {
+      "ta": "546",
+      "chapter_path": "/guidance/ta546/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0546_discussion.html",
+      "chars": 55525,
+      "n_chapters": 4
+    },
+    "545": {
+      "ta": "545",
+      "chapter_path": "/guidance/ta545/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0545_discussion.html",
+      "chars": 83776,
+      "n_chapters": 5
+    },
+    "544": {
+      "ta": "544",
+      "chapter_path": "/guidance/ta544/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0544_discussion.html",
+      "chars": 37925,
+      "n_chapters": 5
+    },
+    "543": {
+      "ta": "543",
+      "chapter_path": "/guidance/ta543/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0543_discussion.html",
+      "chars": 53988,
+      "n_chapters": 5
+    },
+    "542": {
+      "ta": "542",
+      "chapter_path": "/guidance/ta542/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0542_discussion.html",
+      "chars": 66451,
+      "n_chapters": 5
+    },
+    "541": {
+      "ta": "541",
+      "chapter_path": "/guidance/ta541/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0541_discussion.html",
+      "chars": 116985,
+      "n_chapters": 5
+    },
+    "540": {
+      "ta": "540",
+      "chapter_path": "/guidance/ta540/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0540_discussion.html",
+      "chars": 86299,
+      "n_chapters": 5
+    },
+    "539": {
+      "ta": "539",
+      "chapter_path": "/guidance/ta539/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0539_discussion.html",
+      "chars": 67264,
+      "n_chapters": 5
+    },
+    "538": {
+      "ta": "538",
+      "chapter_path": "/guidance/ta538/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0538_discussion.html",
+      "chars": 87642,
+      "n_chapters": 5
+    },
+    "537": {
+      "ta": "537",
+      "chapter_path": "/guidance/ta537/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0537_discussion.html",
+      "chars": 47381,
+      "n_chapters": 5
+    },
+    "536": {
+      "ta": "536",
+      "chapter_path": "/guidance/ta536/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0536_discussion.html",
+      "chars": 81829,
+      "n_chapters": 5
+    },
+    "535": {
+      "ta": "535",
+      "chapter_path": "/guidance/ta535/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0535_discussion.html",
+      "chars": 85444,
+      "n_chapters": 6
+    },
+    "534": {
+      "ta": "534",
+      "chapter_path": "/guidance/ta534/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0534_discussion.html",
+      "chars": 66907,
+      "n_chapters": 5
+    },
+    "533": {
+      "ta": "533",
+      "chapter_path": "/guidance/ta533/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0533_discussion.html",
+      "chars": 74109,
+      "n_chapters": 5
+    },
+    "531": {
+      "ta": "531",
+      "chapter_path": "/guidance/ta531/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0531_discussion.html",
+      "chars": 58016,
+      "n_chapters": 5
+    },
+    "530": {
+      "ta": "530",
+      "chapter_path": "/guidance/ta530/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0530_discussion.html",
+      "chars": 76558,
+      "n_chapters": 4
+    },
+    "527": {
+      "ta": "527",
+      "chapter_path": "/guidance/ta527/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0527_discussion.html",
+      "chars": 92567,
+      "n_chapters": 5
+    },
+    "526": {
+      "ta": "526",
+      "chapter_path": "/guidance/ta526/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0526_discussion.html",
+      "chars": 57636,
+      "n_chapters": 5
+    },
+    "525": {
+      "ta": "525",
+      "chapter_path": "/guidance/ta525/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0525_discussion.html",
+      "chars": 56853,
+      "n_chapters": 5
+    },
+    "524": {
+      "ta": "524",
+      "chapter_path": "/guidance/ta524/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0524_discussion.html",
+      "chars": 128114,
+      "n_chapters": 6
+    },
+    "523": {
+      "ta": "523",
+      "chapter_path": "/guidance/ta523/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0523_discussion.html",
+      "chars": 72983,
+      "n_chapters": 5
+    },
+    "521": {
+      "ta": "521",
+      "chapter_path": "/guidance/ta521/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0521_discussion.html",
+      "chars": 36213,
+      "n_chapters": 6
+    },
+    "520": {
+      "ta": "520",
+      "chapter_path": "/guidance/ta520/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0520_discussion.html",
+      "chars": 64844,
+      "n_chapters": 5
+    },
+    "518": {
+      "ta": "518",
+      "chapter_path": "/guidance/ta518/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0518_discussion.html",
+      "chars": 69503,
+      "n_chapters": 6
+    },
+    "517": {
+      "ta": "517",
+      "chapter_path": "/guidance/ta517/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0517_discussion.html",
+      "chars": 73283,
+      "n_chapters": 7
+    },
+    "516": {
+      "ta": "516",
+      "chapter_path": "/guidance/ta516/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0516_discussion.html",
+      "chars": 47286,
+      "n_chapters": 5
+    },
+    "515": {
+      "ta": "515",
+      "chapter_path": "/guidance/ta515/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0515_discussion.html",
+      "chars": 51463,
+      "n_chapters": 4
+    },
+    "513": {
+      "ta": "513",
+      "chapter_path": "/guidance/ta513/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0513_discussion.html",
+      "chars": 78855,
+      "n_chapters": 5
+    },
+    "512": {
+      "ta": "512",
+      "chapter_path": "/guidance/ta512/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0512_discussion.html",
+      "chars": 73663,
+      "n_chapters": 5
+    },
+    "511": {
+      "ta": "511",
+      "chapter_path": "/guidance/ta511/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0511_discussion.html",
+      "chars": 61280,
+      "n_chapters": 6
+    },
+    "509": {
+      "ta": "509",
+      "chapter_path": "/guidance/ta509/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0509_discussion.html",
+      "chars": 43222,
+      "n_chapters": 6
+    },
+    "508": {
+      "ta": "508",
+      "chapter_path": "/guidance/ta508/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0508_discussion.html",
+      "chars": 65640,
+      "n_chapters": 6
+    },
+    "507": {
+      "ta": "507",
+      "chapter_path": "/guidance/ta507/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0507_discussion.html",
+      "chars": 46366,
+      "n_chapters": 5
+    },
+    "504": {
+      "ta": "504",
+      "chapter_path": "/guidance/ta504/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0504_discussion.html",
+      "chars": 59441,
+      "n_chapters": 5
+    },
+    "503": {
+      "ta": "503",
+      "chapter_path": "/guidance/ta503/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0503_discussion.html",
+      "chars": 51513,
+      "n_chapters": 4
+    },
+    "502": {
+      "ta": "502",
+      "chapter_path": "/guidance/ta502/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0502_discussion.html",
+      "chars": 44088,
+      "n_chapters": 5
+    },
+    "501": {
+      "ta": "501",
+      "chapter_path": "/guidance/ta501/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0501_discussion.html",
+      "chars": 59046,
+      "n_chapters": 6
+    },
+    "500": {
+      "ta": "500",
+      "chapter_path": "/guidance/ta500/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0500_discussion.html",
+      "chars": 47708,
+      "n_chapters": 5
+    },
+    "499": {
+      "ta": "499",
+      "chapter_path": "/guidance/ta499/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0499_discussion.html",
+      "chars": 39181,
+      "n_chapters": 5
+    },
+    "498": {
+      "ta": "498",
+      "chapter_path": "/guidance/ta498/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0498_discussion.html",
+      "chars": 74615,
+      "n_chapters": 5
+    },
+    "497": {
+      "ta": "497",
+      "chapter_path": "/guidance/ta497/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0497_discussion.html",
+      "chars": 31542,
+      "n_chapters": 6
+    },
+    "496": {
+      "ta": "496",
+      "chapter_path": "/guidance/ta496/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0496_discussion.html",
+      "chars": 58011,
+      "n_chapters": 5
+    },
+    "495": {
+      "ta": "495",
+      "chapter_path": "/guidance/ta495/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0495_discussion.html",
+      "chars": 61412,
+      "n_chapters": 6
+    },
+    "494": {
+      "ta": "494",
+      "chapter_path": "/guidance/ta494/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0494_discussion.html",
+      "chars": 56759,
+      "n_chapters": 5
+    },
+    "489": {
+      "ta": "489",
+      "chapter_path": "/guidance/ta489/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0489_discussion.html",
+      "chars": 59887,
+      "n_chapters": 4
+    },
+    "488": {
+      "ta": "488",
+      "chapter_path": "/guidance/ta488/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0488_discussion.html",
+      "chars": 53749,
+      "n_chapters": 5
+    },
+    "486": {
+      "ta": "486",
+      "chapter_path": "/guidance/ta486/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0486_discussion.html",
+      "chars": 29041,
+      "n_chapters": 5
+    },
+    "485": {
+      "ta": "485",
+      "chapter_path": "/guidance/ta485/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0485_discussion.html",
+      "chars": 64425,
+      "n_chapters": 6
+    },
+    "482": {
+      "ta": "482",
+      "chapter_path": "/guidance/ta482/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0482_discussion.html",
+      "chars": 61492,
+      "n_chapters": 6
+    },
+    "481": {
+      "ta": "481",
+      "chapter_path": "/guidance/ta481/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0481_discussion.html",
+      "chars": 59024,
+      "n_chapters": 6
+    },
+    "480": {
+      "ta": "480",
+      "chapter_path": "/guidance/ta480/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0480_discussion.html",
+      "chars": 63073,
+      "n_chapters": 6
+    },
+    "479": {
+      "ta": "479",
+      "chapter_path": "/guidance/ta479/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0479_discussion.html",
+      "chars": 55114,
+      "n_chapters": 6
+    },
+    "478": {
+      "ta": "478",
+      "chapter_path": "/guidance/ta478/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0478_discussion.html",
+      "chars": 90844,
+      "n_chapters": 5
+    },
+    "477": {
+      "ta": "477",
+      "chapter_path": "/guidance/ta477/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0477_discussion.html",
+      "chars": 78028,
+      "n_chapters": 5
+    },
+    "476": {
+      "ta": "476",
+      "chapter_path": "/guidance/ta476/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0476_discussion.html",
+      "chars": 55464,
+      "n_chapters": 5
+    },
+    "474": {
+      "ta": "474",
+      "chapter_path": "/guidance/ta474/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0474_discussion.html",
+      "chars": 66866,
+      "n_chapters": 6
+    },
+    "473": {
+      "ta": "473",
+      "chapter_path": "/guidance/ta473/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0473_discussion.html",
+      "chars": 55190,
+      "n_chapters": 6
+    },
+    "467": {
+      "ta": "467",
+      "chapter_path": "/guidance/ta467/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0467_discussion.html",
+      "chars": 50199,
+      "n_chapters": 8
+    },
+    "466": {
+      "ta": "466",
+      "chapter_path": "/guidance/ta466/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0466_discussion.html",
+      "chars": 67015,
+      "n_chapters": 6
+    },
+    "464": {
+      "ta": "464",
+      "chapter_path": "/guidance/ta464/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0464_discussion.html",
+      "chars": 67259,
+      "n_chapters": 6
+    },
+    "463": {
+      "ta": "463",
+      "chapter_path": "/guidance/ta463/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0463_discussion.html",
+      "chars": 63808,
+      "n_chapters": 6
+    },
+    "462": {
+      "ta": "462",
+      "chapter_path": "/guidance/ta462/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0462_discussion.html",
+      "chars": 61504,
+      "n_chapters": 7
+    },
+    "461": {
+      "ta": "461",
+      "chapter_path": "/guidance/ta461/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0461_discussion.html",
+      "chars": 41654,
+      "n_chapters": 6
+    },
+    "460": {
+      "ta": "460",
+      "chapter_path": "/guidance/ta460/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0460_discussion.html",
+      "chars": 52235,
+      "n_chapters": 6
+    },
+    "458": {
+      "ta": "458",
+      "chapter_path": "/guidance/ta458/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0458_discussion.html",
+      "chars": 84271,
+      "n_chapters": 7
+    },
+    "456": {
+      "ta": "456",
+      "chapter_path": "/guidance/ta456/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0456_discussion.html",
+      "chars": 41231,
+      "n_chapters": 6
+    },
+    "455": {
+      "ta": "455",
+      "chapter_path": "/guidance/ta455/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0455_discussion.html",
+      "chars": 66578,
+      "n_chapters": 7
+    },
+    "451": {
+      "ta": "451",
+      "chapter_path": "/guidance/ta451/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0451_discussion.html",
+      "chars": 61732,
+      "n_chapters": 6
+    },
+    "450": {
+      "ta": "450",
+      "chapter_path": "/guidance/ta450/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0450_discussion.html",
+      "chars": 44441,
+      "n_chapters": 6
+    },
+    "449": {
+      "ta": "449",
+      "chapter_path": "/guidance/ta449/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0449_discussion.html",
+      "chars": 50225,
+      "n_chapters": 5
+    },
+    "448": {
+      "ta": "448",
+      "chapter_path": "/guidance/ta448/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0448_discussion.html",
+      "chars": 42468,
+      "n_chapters": 6
+    },
+    "445": {
+      "ta": "445",
+      "chapter_path": "/guidance/ta445/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0445_discussion.html",
+      "chars": 53515,
+      "n_chapters": 6
+    },
+    "443": {
+      "ta": "443",
+      "chapter_path": "/guidance/ta443/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0443_discussion.html",
+      "chars": 65148,
+      "n_chapters": 6
+    },
+    "442": {
+      "ta": "442",
+      "chapter_path": "/guidance/ta442/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0442_discussion.html",
+      "chars": 59289,
+      "n_chapters": 7
+    },
+    "440": {
+      "ta": "440",
+      "chapter_path": "/guidance/ta440/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0440_discussion.html",
+      "chars": 45677,
+      "n_chapters": 5
+    },
+    "439": {
+      "ta": "439",
+      "chapter_path": "/guidance/ta439/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0439_discussion.html",
+      "chars": 51538,
+      "n_chapters": 7
+    },
+    "433": {
+      "ta": "433",
+      "chapter_path": "/guidance/ta433/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0433_discussion.html",
+      "chars": 67597,
+      "n_chapters": 6
+    },
+    "432": {
+      "ta": "432",
+      "chapter_path": "/guidance/ta432/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0432_discussion.html",
+      "chars": 50624,
+      "n_chapters": 6
+    },
+    "430": {
+      "ta": "430",
+      "chapter_path": "/guidance/ta430/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0430_discussion.html",
+      "chars": 59610,
+      "n_chapters": 6
+    },
+    "429": {
+      "ta": "429",
+      "chapter_path": "/guidance/ta429/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0429_discussion.html",
+      "chars": 70354,
+      "n_chapters": 6
+    },
+    "428": {
+      "ta": "428",
+      "chapter_path": "/guidance/ta428/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0428_discussion.html",
+      "chars": 49316,
+      "n_chapters": 6
+    },
+    "427": {
+      "ta": "427",
+      "chapter_path": "/guidance/ta427/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0427_discussion.html",
+      "chars": 44610,
+      "n_chapters": 6
+    },
+    "426": {
+      "ta": "426",
+      "chapter_path": "/guidance/ta426/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0426_discussion.html",
+      "chars": 60776,
+      "n_chapters": 6
+    },
+    "425": {
+      "ta": "425",
+      "chapter_path": "/guidance/ta425/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0425_discussion.html",
+      "chars": 61078,
+      "n_chapters": 6
+    },
+    "424": {
+      "ta": "424",
+      "chapter_path": "/guidance/ta424/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0424_discussion.html",
+      "chars": 53634,
+      "n_chapters": 6
+    },
+    "423": {
+      "ta": "423",
+      "chapter_path": "/guidance/ta423/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0423_discussion.html",
+      "chars": 66191,
+      "n_chapters": 6
+    },
+    "422": {
+      "ta": "422",
+      "chapter_path": "/guidance/ta422/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0422_discussion.html",
+      "chars": 97307,
+      "n_chapters": 5
+    },
+    "421": {
+      "ta": "421",
+      "chapter_path": "/guidance/ta421/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0421_discussion.html",
+      "chars": 69583,
+      "n_chapters": 6
+    },
+    "420": {
+      "ta": "420",
+      "chapter_path": "/guidance/ta420/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0420_discussion.html",
+      "chars": 37926,
+      "n_chapters": 6
+    },
+    "419": {
+      "ta": "419",
+      "chapter_path": "/guidance/ta419/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0419_discussion.html",
+      "chars": 74694,
+      "n_chapters": 7
+    },
+    "418": {
+      "ta": "418",
+      "chapter_path": "/guidance/ta418/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0418_discussion.html",
+      "chars": 37500,
+      "n_chapters": 6
+    },
+    "417": {
+      "ta": "417",
+      "chapter_path": "/guidance/ta417/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0417_discussion.html",
+      "chars": 60332,
+      "n_chapters": 7
+    },
+    "415": {
+      "ta": "415",
+      "chapter_path": "/guidance/ta415/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0415_discussion.html",
+      "chars": 54910,
+      "n_chapters": 7
+    },
+    "414": {
+      "ta": "414",
+      "chapter_path": "/guidance/ta414/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0414_discussion.html",
+      "chars": 45698,
+      "n_chapters": 5
+    },
+    "413": {
+      "ta": "413",
+      "chapter_path": "/guidance/ta413/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0413_discussion.html",
+      "chars": 42759,
+      "n_chapters": 6
+    },
+    "411": {
+      "ta": "411",
+      "chapter_path": "/guidance/ta411/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0411_discussion.html",
+      "chars": 48974,
+      "n_chapters": 4
+    },
+    "410": {
+      "ta": "410",
+      "chapter_path": "/guidance/ta410/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0410_discussion.html",
+      "chars": 62921,
+      "n_chapters": 7
+    },
+    "409": {
+      "ta": "409",
+      "chapter_path": "/guidance/ta409/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0409_discussion.html",
+      "chars": 46871,
+      "n_chapters": 6
+    },
+    "408": {
+      "ta": "408",
+      "chapter_path": "/guidance/ta408/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0408_discussion.html",
+      "chars": 47249,
+      "n_chapters": 6
+    },
+    "407": {
+      "ta": "407",
+      "chapter_path": "/guidance/ta407/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0407_discussion.html",
+      "chars": 39083,
+      "n_chapters": 7
+    },
+    "406": {
+      "ta": "406",
+      "chapter_path": "/guidance/ta406/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0406_discussion.html",
+      "chars": 63991,
+      "n_chapters": 6
+    },
+    "405": {
+      "ta": "405",
+      "chapter_path": "/guidance/ta405/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0405_discussion.html",
+      "chars": 44024,
+      "n_chapters": 6
+    },
+    "404": {
+      "ta": "404",
+      "chapter_path": "/guidance/ta404/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0404_discussion.html",
+      "chars": 73156,
+      "n_chapters": 7
+    },
+    "403": {
+      "ta": "403",
+      "chapter_path": "/guidance/ta403/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0403_discussion.html",
+      "chars": 62699,
+      "n_chapters": 4
+    },
+    "402": {
+      "ta": "402",
+      "chapter_path": "/guidance/ta402/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0402_discussion.html",
+      "chars": 65847,
+      "n_chapters": 5
+    },
+    "401": {
+      "ta": "401",
+      "chapter_path": "/guidance/ta401/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0401_discussion.html",
+      "chars": 75038,
+      "n_chapters": 6
+    },
+    "400": {
+      "ta": "400",
+      "chapter_path": "/guidance/ta400/chapter/4-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0400_discussion.html",
+      "chars": 40809,
+      "n_chapters": 6
+    },
+    "1152": {
+      "ta": "1152",
+      "chapter_path": "/guidance/ta1152/chapter/3-Discussion",
+      "match_score": 98,
+      "file": "nice_chapters\\TA1152_discussion.html",
+      "chars": 46013,
+      "n_chapters": 5
+    },
+    "718": {
+      "ta": "718",
+      "chapter_path": "/guidance/ta718/chapter/3-Committee-discussion",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0718_discussion.html",
+      "chars": 53986,
+      "n_chapters": 6
+    },
+    "412": {
+      "ta": "412",
+      "chapter_path": "/guidance/ta412/chapter/4-Committee-discussion-during-the-original-appraisal",
+      "match_score": 100,
+      "file": "nice_chapters\\TA0412_discussion.html",
+      "chars": 86357,
+      "n_chapters": 6
+    }
+  },
+  "failed": {
+    "1181": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-aficamten', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "1180": "no chapter links on overview",
+    "1179": "no chapter links on overview",
+    "1178": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-deuruxolitinib', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "1172": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-atogepant', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "1168": "no chapter links on overview",
+    "1163": "no chapter links on overview",
+    "1160": "no discussion chapter among 4: ['1-Recommendation', '2-Information-about-durvalumab-with-FLOT', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "1159": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-lisocabtagene-marale', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "1154": "no chapter links on overview",
+    "1151": "no chapter links on overview",
+    "1145": "no discussion chapter among 4: ['1-Recommendation', '2-Information-about-pembrolizumab', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "1144": "no chapter links on overview",
+    "1141": "no discussion chapter among 1: ['Advice']",
+    "1137": "no chapter links on overview",
+    "1135": "no chapter links on overview",
+    "1132": "no chapter links on overview",
+    "1127": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-nivolumab', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "1125": "no chapter links on overview",
+    "1124": "no chapter links on overview",
+    "1123": "no chapter links on overview",
+    "1121": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-acoramidis', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "1119": "no discussion chapter among 4: ['1-Recommendation', '2-Information-about-venetoclax-plus-obin', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "1118": "no chapter links on overview",
+    "1112": "no chapter links on overview",
+    "1111": "no chapter links on overview",
+    "1110": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-abiraterone', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "1109": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-darolutamide', '3-Implementation', '4-Evaluation-committee-members']",
+    "1108": "no chapter links on overview",
+    "1105": "no chapter links on overview",
+    "1104": "no chapter links on overview",
+    "1102": "no chapter links on overview",
+    "1100": "no chapter links on overview",
+    "1095": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-guselkumab', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "1094": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-guselkumab', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "1089": "no chapter links on overview",
+    "1088": "no chapter links on overview",
+    "1087": "no discussion chapter among 5: ['1-Recommendation', '2-Information-about-12-SQ-Bet-SLIT', '3-Implementation', '4-Evaluation-committee-members-and-NICE-', 'Update-information']",
+    "1085": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-vanzacaftor-tezacaft', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "1084": "no chapter links on overview",
+    "1083": "no chapter links on overview",
+    "1082": "no chapter links on overview",
+    "1081": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-zanubrutinib', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "1080": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-mirikizumab', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "1078": "no chapter links on overview",
+    "1076": "no chapter links on overview",
+    "1075": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-dapagliflozin', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "1072": "no chapter links on overview",
+    "1071": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-atezolizumab', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "1068": "no chapter links on overview",
+    "1067": "no discussion chapter among 4: ['1-Recommendation', '2-Information-about-linzagolix', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "1066": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-somapacitan', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "1061": "no chapter links on overview",
+    "1058": "no chapter links on overview",
+    "1052": "no chapter links on overview",
+    "1047": "no chapter links on overview",
+    "1041": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-durvalumab', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "1040": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-olaparib', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "1038": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-selpercatinib', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "1032": "no chapter links on overview",
+    "1029": "no chapter links on overview",
+    "1028": "no chapter links on overview",
+    "1025": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-ublituximab', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "1024": "no chapter links on overview",
+    "1022": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-bevacizumab-gamma', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "1021": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-crizotinib', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "1020": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-eplontersen', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "1019": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-crovalimab', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "1014": "no discussion chapter among 4: ['1-Recommendation', '2-Information-about-alectinib', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "1007": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-rucaparib', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "1006": "no chapter links on overview",
+    "1004": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-faricimab', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "999": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-vibegron', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "998": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-risankizumab', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "994": "no chapter links on overview",
+    "990": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-tenecteplase', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "987": "no chapter links on overview",
+    "985": "no chapter links on overview",
+    "982": "no chapter links on overview",
+    "981": "no chapter links on overview",
+    "980": "no chapter links on overview",
+    "978": "no chapter links on overview",
+    "976": "no chapter links on overview",
+    "972": "no chapter links on overview",
+    "969": "no chapter links on overview",
+    "968": "no chapter links on overview",
+    "966": "no chapter links on overview",
+    "965": "no chapter links on overview",
+    "963": "no chapter links on overview",
+    "961": "no chapter links on overview",
+    "960": "no chapter links on overview",
+    "956": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-etrasimod', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "953": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-fluocinolone-acetoni', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "945": "no chapter links on overview",
+    "942": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-empagliflozin', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "941": "no chapter links on overview",
+    "940": "no chapter links on overview",
+    "938": "no chapter links on overview",
+    "937": "no chapter links on overview",
+    "936": "no chapter links on overview",
+    "933": "no chapter links on overview",
+    "932": "no chapter links on overview",
+    "929": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-empagliflozin', '3-Implementation', '4-Appraisal-committee-members-and-NICE-p']",
+    "925": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-mirikizumab', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "923": "no chapter links on overview",
+    "918": "no discussion chapter among 5: ['1-Recommendations', '2-Information-about-bimekizumab', '3-Implementation', '4-Evaluation-committee-members-and-NICE-', '5-Update-information']",
+    "916": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-bimekizumab', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "910": "no chapter links on overview",
+    "909": "no chapter links on overview",
+    "901": "no chapter links on overview",
+    "899": "no chapter links on overview",
+    "889": "no chapter links on overview",
+    "885": "no chapter links on overview",
+    "884": "no chapter links on overview",
+    "881": "no chapter links on overview",
+    "879": "no chapter links on overview",
+    "869": "no chapter links on overview",
+    "868": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-vutrisiran', '3-Implementation', '4-Evaluation-committee-members-and-NICE-']",
+    "867": "no chapter links on overview",
+    "863": "no discussion chapter among 4: ['1-Recommendations', '2-Information-about-somatrogon', '3-Implementation', '4-Appraisal-committee-members-and-NICE-p']",
+    "859": "no chapter links on overview",
+    "855": "no chapter links on overview",
+    "848": "no chapter links on overview",
+    "847": "no chapter links on overview",
+    "846": "no chapter links on overview",
+    "845": "no chapter links on overview",
+    "844": "no chapter links on overview",
+    "843": "no chapter links on overview",
+    "842": "no chapter links on overview",
+    "841": "no chapter links on overview",
+    "840": "no chapter links on overview",
+    "839": "no chapter links on overview",
+    "838": "no chapter links on overview",
+    "834": "no chapter links on overview",
+    "831": "no chapter links on overview",
+    "826": "no chapter links on overview",
+    "825": "no chapter links on overview",
+    "823": "no chapter links on overview",
+    "822": "no chapter links on overview",
+    "811": "no chapter links on overview",
+    "806": "no chapter links on overview",
+    "797": "no chapter links on overview",
+    "793": "no chapter links on overview",
+    "785": "no chapter links on overview",
+    "782": "no chapter links on overview",
+    "779": "no chapter links on overview",
+    "775": "no chapter links on overview",
+    "774": "no chapter links on overview",
+    "771": "no chapter links on overview",
+    "769": "no chapter links on overview",
+    "762": "no chapter links on overview",
+    "761": "no chapter links on overview",
+    "760": "no chapter links on overview",
+    "759": "no chapter links on overview",
+    "756": "no chapter links on overview",
+    "755": "no chapter links on overview",
+    "750": "no chapter links on overview",
+    "749": "no chapter links on overview",
+    "745": "no chapter links on overview",
+    "743": "no chapter links on overview",
+    "742": "no chapter links on overview",
+    "732": "no chapter links on overview",
+    "731": "no chapter links on overview",
+    "730": "no chapter links on overview",
+    "727": "no chapter links on overview",
+    "726": "no chapter links on overview",
+    "721": "no chapter links on overview",
+    "717": "no chapter links on overview",
+    "714": "no chapter links on overview",
+    "711": "no chapter links on overview",
+    "703": "no chapter links on overview",
+    "702": "no chapter links on overview",
+    "701": "no chapter links on overview",
+    "700": "no chapter links on overview",
+    "696": "no chapter links on overview",
+    "693": "no chapter links on overview",
+    "690": "no chapter links on overview",
+    "686": "no chapter links on overview",
+    "678": "no chapter links on overview",
+    "675": "no chapter links on overview",
+    "674": "no chapter links on overview",
+    "673": "no chapter links on overview",
+    "669": "no chapter links on overview",
+    "663": "no chapter links on overview",
+    "662": "no chapter links on overview",
+    "658": "no chapter links on overview",
+    "652": "no chapter links on overview",
+    "648": "no chapter links on overview",
+    "647": "no chapter links on overview",
+    "646": "no chapter links on overview",
+    "645": "no chapter links on overview",
+    "644": "no chapter links on overview",
+    "637": "no chapter links on overview",
+    "636": "no chapter links on overview",
+    "635": "no chapter links on overview",
+    "634": "no chapter links on overview",
+    "631": "no chapter links on overview",
+    "625": "no chapter links on overview",
+    "622": "no chapter links on overview",
+    "621": "no chapter links on overview",
+    "620": "no chapter links on overview",
+    "619": "no chapter links on overview",
+    "618": "no chapter links on overview",
+    "613": "no chapter links on overview",
+    "611": "no chapter links on overview",
+    "609": "no chapter links on overview",
+    "608": "no chapter links on overview",
+    "603": "ConnectionError",
+    "602": "ConnectionError",
+    "601": "ConnectionError",
+    "600": "ConnectionError",
+    "599": "ConnectionError",
+    "598": "no chapter links on overview",
+    "597": "no chapter links on overview",
+    "594": "no chapter links on overview",
+    "593": "no chapter links on overview",
+    "592": "no chapter links on overview",
+    "588": "no chapter links on overview",
+    "582": "no chapter links on overview",
+    "581": "no chapter links on overview",
+    "579": "no chapter links on overview",
+    "578": "no chapter links on overview",
+    "576": "no chapter links on overview",
+    "573": "no chapter links on overview",
+    "570": "no chapter links on overview",
+    "568": "no chapter links on overview",
+    "567": "no chapter links on overview",
+    "564": "no chapter links on overview",
+    "560": "no chapter links on overview",
+    "559": "no chapter links on overview",
+    "558": "no chapter links on overview",
+    "557": "no chapter links on overview",
+    "554": "no chapter links on overview",
+    "553": "no chapter links on overview",
+    "549": "no chapter links on overview",
+    "548": "no chapter links on overview",
+    "532": "no chapter links on overview",
+    "529": "no chapter links on overview",
+    "528": "no chapter links on overview",
+    "522": "no chapter links on overview",
+    "519": "no chapter links on overview",
+    "514": "no chapter links on overview",
+    "510": "no chapter links on overview",
+    "506": "no chapter links on overview",
+    "505": "no chapter links on overview",
+    "493": "no chapter links on overview",
+    "492": "no chapter links on overview",
+    "491": "no chapter links on overview",
+    "490": "no chapter links on overview",
+    "487": "no chapter links on overview",
+    "484": "no chapter links on overview",
+    "483": "no chapter links on overview",
+    "472": "no chapter links on overview",
+    "471": "no chapter links on overview",
+    "470": "no chapter links on overview",
+    "469": "no chapter links on overview",
+    "468": "no chapter links on overview",
+    "465": "no chapter links on overview",
+    "459": "no chapter links on overview",
+    "457": "no chapter links on overview",
+    "454": "no chapter links on overview",
+    "453": "no chapter links on overview",
+    "452": "no chapter links on overview",
+    "447": "no chapter links on overview",
+    "446": "no chapter links on overview",
+    "444": "no chapter links on overview",
+    "441": "no chapter links on overview",
+    "438": "no chapter links on overview",
+    "437": "no chapter links on overview",
+    "436": "no chapter links on overview",
+    "435": "no chapter links on overview",
+    "434": "no chapter links on overview",
+    "431": "no chapter links on overview",
+    "416": "no chapter links on overview"
+  }
+}

@@ -1,3 +1,39 @@
+"""
+Translate G-BA and HAS passages into English, cached to translations.json.
+
+The tool's readers work in English; the sources are German and French. This
+produces an English rendering ALONGSIDE the original — never instead of it.
+That distinction is the whole design:
+
+  * the original text stays the record, and the page link still opens the
+    official PDF in its own language;
+  * a translation is labelled as machine translation wherever it appears;
+  * the cited-answer flow keeps quoting the ORIGINAL inside quotation marks,
+    because a quotation that has been through a model is not a quotation.
+
+Terminology is pinned by a glossary in the system prompt. These are terms of
+art, not vocabulary: "Zusatznutzen ist nicht belegt" means a specific
+regulatory finding, and a loose rendering ("no additional use was proven")
+would misreport a decision. The glossary is the reason a small model is
+viable here at all.
+
+Cost, measured against the real corpus (19.4M characters):
+
+    Haiku 5.5    ~$3.40       Sonnet 5.5    ~$67
+
+so the choice is about quality, not budget. Start with --sample, which now
+reports three failure modes rather than printing output for you to eyeball:
+an empty or truncated answer, a number that was reformatted, and a passage
+that came back untranslated.
+
+    python translate_passages.py --sample 20      # eyeball before committing
+    python translate_passages.py --limit 200
+    python translate_passages.py                  # everything, resumable
+    python translate_passages.py --model claude-sonnet-5-5
+
+Needs ANTHROPIC_API_KEY in the environment or .streamlit/secrets.toml.
+"""
+
 import argparse
 import concurrent.futures as futures
 import hashlib

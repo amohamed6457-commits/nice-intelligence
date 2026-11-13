@@ -1,3 +1,29 @@
+"""
+Score the table classifier against the hand-coded benchmark.
+
+Reads table_benchmark.xlsx, recomputes what endpoint_tables.py predicts for
+each sampled section, and compares. No answer key file exists: predictions
+are derived from gba_tables.json at scoring time, so the coding sheet could
+never have leaked them.
+
+What is reported
+----------------
+PRECISION per category -- when the tool says "Quality of life", how often is
+it right. That is the question the record view asks, because a wrongly filed
+table appears under a verdict looking authoritative.
+
+The confusion matrix shows WHERE the errors go. "Quality of life" rows
+landing in Morbidity is the EORTC QLQ-C30 split failing; anything landing in
+"Not an endpoint table" means cost or regimen tables are getting through,
+which is the more embarrassing failure.
+
+Wilson intervals, because 10 per category is a small sample and a point
+estimate alone would overstate what it tells you.
+
+    python score_table_benchmark.py
+    python score_table_benchmark.py --errors
+"""
+
 import argparse
 import json
 import os

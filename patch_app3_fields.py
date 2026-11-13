@@ -1,3 +1,23 @@
+"""
+Make the record body obey the Original / English switch.
+
+The sidebar switch only reached the cited-passages panel. The fields a
+reader sees FIRST -- Indication, Appropriate comparator therapy, Patient
+population, Added benefit -- are rendered by app3 straight from the workbook
+columns, so they stayed in German or French and the switch looked broken.
+
+This wraps those two render points in source_citations.display_text(), which
+returns the English rendering when the switch is on English and one exists,
+and the original value otherwise.
+
+Run patch_app3_language.py FIRST (it adds the sidebar switch); this patch
+makes the switch actually do something to the record body.
+
+    python patch_app3_fields.py --check
+    python patch_app3_fields.py
+    python patch_app3_fields.py --revert
+"""
+
 import argparse
 import os
 import shutil

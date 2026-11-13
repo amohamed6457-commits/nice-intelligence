@@ -1,3 +1,44 @@
+"""
+Score recovered tables against the hand-coded reference standard.
+
+This is the measurement the platform has never had. Agreement between
+extraction runs is known (89% unanimous across 6,305 cells); accuracy against
+a human has never been measured, and those are different claims.
+
+What is compared
+----------------
+The reference is 181 endpoint rows hand-coded from 20 G-BA resolutions. The
+candidate is gba_tables.json, the tables recovered from the same resolutions'
+PDFs by extract_gba_tables.py.
+
+Matching by endpoint NAME would be unreliable — the reference names are the
+coder's English renderings of German headings, and a fuzzy string match
+between "Spleen volume reduction >=35%" and "Reduktion des Milzvolumens um
+>= 35 %" would measure my matcher, not the extraction. So the comparison is
+on the NUMBERS, which are language-independent and are what a reader would
+check:
+
+  FOUND TOGETHER  the effect value and both CI bounds appear in ONE recovered
+                  table row — the extraction captured this endpoint intact
+  SPLIT           all three appear somewhere in the appraisal's tables, but
+                  not in a single row — the values survived, the structure
+                  did not
+  PARTIAL         some of the three appear, others do not
+  MISSED          the effect value does not appear anywhere
+
+A reference row the coder marked "None reported" is scored separately: there
+is no number to find, so the question is whether extraction wrongly invented
+one. Those are counted but kept out of the headline rate, and reported on
+their own.
+
+Numbers are compared after normalising German decimal commas, so 0,79 and
+0.79 are the same value, and with a relative tolerance for rounding.
+
+    python score_extraction.py
+    python score_extraction.py --reference REFERENCE_TABLE_EDITED_2.xlsx
+    python score_extraction.py --detail D-161
+"""
+
 import argparse
 import json
 import os

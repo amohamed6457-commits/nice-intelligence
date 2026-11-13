@@ -1,3 +1,21 @@
+"""
+Put the Original / English switch in the sidebar, beside the HTA body radio.
+
+Why a patcher and not a replacement file: app3.py is 269 KB and may hold
+changes this session has not seen. This edits one spot in your copy and
+leaves everything else exactly as it was.
+
+The switch has to live in app3's own sidebar rather than in the citation
+panel, because the panel only runs once a record is open -- so the control
+was invisible on the search page, which is where someone looks for it.
+
+    python patch_app3_language.py            # patch, with a .bak
+    python patch_app3_language.py --check    # say what it would do, change nothing
+    python patch_app3_language.py --revert   # restore the .bak
+
+Safe to run twice: it detects its own work and stops.
+"""
+
 import argparse
 import os
 import shutil

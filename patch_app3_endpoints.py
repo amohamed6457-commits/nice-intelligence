@@ -1,3 +1,20 @@
+"""
+Put the endpoint-findings panel on the record view.
+
+Adds three things to app3.py:
+  1. a guarded import of endpoint_panel, matching how source_citations is
+     imported -- above the HTA body switcher, with a stub fallback, and
+     checked with hasattr because a namespace package imports fine and then
+     fails on first use;
+  2. the attach() call that hands it the two frames;
+  3. the render() call, directly above the cited-passages panel, so a reader
+     sees the verdicts first and the passages underneath.
+
+    python patch_app3_endpoints.py --check
+    python patch_app3_endpoints.py
+    python patch_app3_endpoints.py --revert
+"""
+
 import argparse
 import os
 import shutil

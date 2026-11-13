@@ -1,3 +1,46 @@
+"""
+Give the G-BA endpoint verdicts a page number -- and a second opinion.
+
+The problem
+-----------
+The four endpoint-category verdicts shown on a record come from G-BA's AIS
+database. They were never on a page, so they carry no citation, and a reader
+has no way to check them. Benchmark 2 made the cost of that plain: every row
+came back marked "medium" confidence and the page column was empty on all
+ten.
+
+What this does
+--------------
+Every G-BA resolution prints a summary table:
+
+    Endpoint category    Direction of effect / risk of bias    Summary
+    Mortality            <->                                   No relevant difference...
+    Morbidity            ^                                     Advantage in...
+    Health-related       (empty set)                           No data available.
+      quality of life
+    Side effects         <->                                   No relevant difference...
+
+That table IS the source of the AIS verdicts, and it is on a numbered page
+of a document we already index. So this module finds it, parses it, and
+returns the page -- which gives the verdict a citation.
+
+Because the table is parsed independently of AIS, it also serves as a CHECK.
+Where the symbol and the AIS verdict agree, a reader can trust the row and
+open the page. Where they disagree, the row is flagged rather than shown as
+fact. That is the difference between "medium confidence" and a number.
+
+What it cannot do
+-----------------
+The table is findable for about 72% of indexed appraisals. For the rest
+there is still no page, and this module says so rather than guessing. It
+does not invent a citation, and it never silently substitutes the parsed
+table for the AIS value.
+
+    python subgroup_sources.py                      # agreement across the corpus
+    python subgroup_sources.py --appraisal D-1155   # one appraisal in detail
+    python subgroup_sources.py --disagreements 20   # where AIS and the PDF differ
+"""
+
 import argparse
 import os
 import re

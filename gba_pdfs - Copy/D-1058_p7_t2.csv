@@ -1,0 +1,9 @@
+﻿Endpoint,Pembrolizumab N,Patients with event n (%),Placebo N,Patients with event n (%),Intervention vs control Relative risk [95% CI] p value c Absolute difference (AD) b
+Total adverse events (presented additionally) i,495,475 (95.8),499,454 (91.0),-
+Serious adverse events (SAE) i,496,127 (25.6),499,76 (15.2),"1.68 [1.30; 2.17] < 0.001 AD: + 10,4%"
+"Severe adverse events (CTCAE grade ≥ 3) i,j",496,170 (34.3),499,128 (25.7),"1.34 [1.10; 1.62] 0.003 AD: + 8,6%"
+Therapy discontinuation due to adverse events i,496,103 (20.8),499,29 (5.8),3.57 [2.41; 5.29] < 0.001 AD: + 15%
+Specific adverse events,,,,,
+Immune- mediated AEs (presented additionally) j,496,n.d.,499,n.d.,-
+Immune- mediated SAEs j,496,44 (8.9),499,8 (1.6),5.53 [2.63; 11.63] < 0.001
+"Immune- mediated severe AEs j, k",496,42 (8.5),499,10 (2.0),4.23 [2.14; 8.33] < 0.001

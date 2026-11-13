@@ -1,3 +1,17 @@
+"""
+Wire nice_attributes.py into app3.py.
+
+Four edits. Idempotent - run it twice and the second run reports "already
+applied" and changes nothing. Writes app3.py.bak first.
+
+It patches YOUR app3.py in place, so the committee-sections work already in
+that file is untouched; it never replaces the file wholesale.
+
+Usage:
+  python patch_app3_attributes.py
+  python patch_app3_attributes.py --app app3.py --dry-run
+"""
+
 import argparse
 import os
 import shutil
@@ -6,6 +20,13 @@ import sys
 MARK = "nice_attributes"
 
 
+# Regex-anchored edits, tried in order until one matches. Used where the
+# surrounding code varies between versions of app3.py: a literal anchor there
+# fails on a single changed space, and guessing a replacement is worse than
+# saying so.
+#
+# Each entry: (description, [candidate patterns], line to insert BEFORE the
+# match, indented to match the matched line).
 REGEX_EDITS = [
     (
         "attribute panel in the record view",

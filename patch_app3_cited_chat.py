@@ -1,3 +1,42 @@
+"""
+Make the G-BA / HAS chat answer from page-cited passages and show them.
+
+Today render_agency_chat() grounds its answers on each record's SUMMARY
+fields and asks the model to cite by appraisal id. So an answer can say "no
+added benefit was proven [D-1313]" and the reader still has to open a
+20-page resolution to find where that was decided.
+
+This patch adds, around the existing call:
+
+  1. An import for cited_answers, placed above the HTA body switcher for the
+     same reason as source_citations — render_agency_view() runs at module
+     level and is followed by st.stop(), so a name bound after it does not
+     exist when a G-BA or HAS record renders.
+
+  2. attach() in render_agency_view(), building the passage pool from the
+     three sheets through the app's own load_agency_sheet().
+
+  3. In render_agency_chat(): retrieval of the passages most likely to
+     answer the question, restricted to the appraisals currently on screen;
+     those passages appended to the context; the citation rules appended to
+     the system prompt; and the cited passages rendered under the answer
+     with their page links.
+
+The answer itself is unchanged in how it is produced — same model, same
+endpoint, same turn limit. What changes is what it is given and what is
+shown afterwards.
+
+Nothing the model says about its sources is trusted: cited_answers.audit()
+checks every marker against the passages actually supplied and every
+quotation against the passage it is attributed to, and the render reports
+any that fail.
+
+Idempotent. Backs up to app3.py.bak6. Compiles before writing.
+
+  python patch_app3_cited_chat.py --dry-run
+  python patch_app3_cited_chat.py
+"""
+
 import argparse
 import os
 import re

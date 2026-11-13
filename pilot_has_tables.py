@@ -1,3 +1,27 @@
+"""
+Pilot: do HAS committee opinions yield tables the way G-BA resolutions do?
+
+G-BA table recovery is now measured at 85.8% of endpoints intact. The
+question this answers is whether the same machinery works on HAS, where the
+situation is different in three ways:
+
+  * the documents are the avis de la Commission de la Transparence, linked
+    from Appraisal_Documents (21,152 PDFs across 12,343 appraisals), not the
+    economic opinions already text-indexed in HAS_Economic_Pages (229);
+  * they are in French, with French number formatting;
+  * nothing about their layout has been checked, where G-BA's was.
+
+Every gate and repair is imported from pilot_gba_tables, so this measures
+HAS documents against the SAME rules that produced the G-BA figure. If the
+rules need changing for French layouts, that is itself the finding.
+
+Run it on three or four before anyone considers 21,000.
+
+    python pilot_has_tables.py
+    python pilot_has_tables.py --appraisal CT-15634 --keep-all
+    python pilot_has_tables.py --type "CEESP economic opinion" --n 3
+"""
+
 import argparse
 import os
 import re
