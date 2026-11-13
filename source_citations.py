@@ -359,7 +359,7 @@ def translation_for(text):
     return _load_translations().get(key)
 
 
-def collapse_repeats(text, min_shared=120):
+def collapse_repeats(text, min_shared=30, min_words=4):
     """Collapse near-identical paragraphs that differ only by subgroup.
 
     G-BA files its reasoning per subgroup, and app3 renders the joined
@@ -379,8 +379,12 @@ def collapse_repeats(text, min_shared=120):
              if p.strip()]
     if len(parts) < 2:
         parts = [p.strip() for p in body.split("\n") if p.strip()]
+    # Same paragraph filed twice: keep one, preserve order.
+    unique = list(dict.fromkeys(parts))
+    fallback = text if len(unique) == len(parts) else "\n\n".join(unique)
+    parts = unique
     if len(parts) < 2:
-        return text
+        return fallback
 
     shared = parts[0]
     for part in parts[1:]:
@@ -389,19 +393,19 @@ def collapse_repeats(text, min_shared=120):
         while i < limit and shared[i] == part[i]:
             i += 1
         shared = shared[:i]
-        if len(shared) < min_shared:
-            return text
 
-    # Cut the shared part back to a word boundary so it does not end mid-word.
-    shared = shared[:shared.rfind(" ")] if " " in shared else shared
-    tails = [part[len(shared):].strip() for part in parts]
+    # Trim to a word boundary only if the match stopped MID-word, so a
+    # complete last word ("mellitus") is kept.
+    if any(len(p) > len(shared) and p[len(shared)].isalnum() for p in parts):
+        shared = shared[:shared.rfind(" ")] if " " in shared else ""
+    shared = shared.rstrip()
+    if len(shared) < min_shared or len(shared.split()) < min_words:
+        return fallback
+
+    tails = [p[len(shared):].lstrip(" ,;:-").strip() for p in parts]
     if not all(tails):
-        return text
-    out = [shared.strip()]
-    for tail in tails:
-        out.append("- " + tail)
-    return "\n\n".join(out)
-
+        return fallback
+    return shared + ":\n\n" + "\n".join("- " + t for t in tails)
 
 def display_text(value):
     """What to SHOW for any field on the record.
