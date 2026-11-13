@@ -10,6 +10,7 @@ import os
 import re
 import pandas as pd
 import streamlit as st
+from hta_core import *  # noqa: F401,F403
 
 DATA_FILE = "NICE_HAS_GBA_updated_2026-11-07.xlsx"
 def data_version():

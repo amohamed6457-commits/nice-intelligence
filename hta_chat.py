@@ -15,6 +15,7 @@ import streamlit as st
 from hta_data import *
 from hta_core import *  # noqa: F401,F403
 from hta_nice import *  # noqa: F401,F403
+from hta_ui import *  # noqa: F401,F403
 
 CHAT_MODEL = "claude-sonnet-5"
 CHAT_MAX_TURNS = 8
