@@ -45,43 +45,39 @@ BACKUP = "app3.py.bak_split"
 # are found automatically -- a module-level name a moved function reads, that
 # nothing left behind still needs, travels with it.
 GROUPS = {
-    "text": ("hta_text.py", [
-        "_text", "_substantive", "_shorten", "_md_safe", "_md_link",
-        "_parse_date", "_to_datetime", "_date_span", "format_eur_icer",
-    ]),
-    "gba": ("hta_gba.py", [
-        "_decision_text", "_clauses", "_extents_in", "_gba_extents",
-        "gba_outcome", "gba_certainty", "gba_favourable",
-        "gba_outcome_with_status", "gba_favourable_with_status",
-        "gba_subtitle", "gba_headlines",
-    ]),
-    "has": ("hta_has.py", [
-        "has_is_early_access", "asmr_level", "smr_level", "has_outcome",
-        "has_outcome_labelled", "has_favourable", "has_ratings_text",
-        "has_subtitle", "has_headlines",
-    ]),
-    "taxonomy": ("hta_taxonomy.py", [
-        "family_order", "outcome_family", "_theme_mode", "_fold",
-        "_fold_series", "_english_area", "therapy_areas",
-        "has_procedure_group", "gba_procedure_group", "condition_label",
-        "orphan_flag",
-    ]),
-    "query": ("hta_query.py", [
-        "_is_stopword", "_term_body", "_term_pattern", "_any_term_regex",
-        "expand_condition_query", "molecule_set", "_inn_stem",
-        "_indication_tokens", "indication_overlap", "_clean_inn",
-    ]),
-    # Second wave. Measured the same way as the first: none of these reach
-    # a mutable module-level object either, only constants and each other.
+    # Six files, in dependency order. Each module only ever reads from ones
+    # created before it, so no import cycle is possible. The grouping is by
+    # FEATURE rather than by what was convenient to move, because the point
+    # is to be able to open one file and review one thing.
     "data": ("hta_data.py", [
         "data_version", "_workbook", "_read_sheet", "load_data",
         "load_enrichment_log", "load_vocabulary", "vocab_options",
         "load_agency_sheet", "load_document_index",
     ]),
+    "core": ("hta_core.py", [
+        # reading a decision: text handling, G-BA, HAS, classification,
+        # and the query expansion behind search
+        "_text", "_substantive", "_shorten", "_md_safe", "_md_link",
+        "_parse_date", "_to_datetime", "_date_span", "format_eur_icer",
+        "_decision_text", "_clauses", "_extents_in", "_gba_extents",
+        "gba_outcome", "gba_certainty", "gba_favourable",
+        "gba_outcome_with_status", "gba_favourable_with_status",
+        "gba_subtitle", "gba_headlines",
+        "has_is_early_access", "asmr_level", "smr_level", "has_outcome",
+        "has_outcome_labelled", "has_favourable", "has_ratings_text",
+        "has_subtitle", "has_headlines",
+        "family_order", "outcome_family", "_theme_mode", "_fold",
+        "_fold_series", "_english_area", "therapy_areas",
+        "has_procedure_group", "gba_procedure_group", "condition_label",
+        "orphan_flag",
+        "_is_stopword", "_term_body", "_term_pattern", "_any_term_regex",
+        "expand_condition_query", "molecule_set", "_inn_stem",
+        "_indication_tokens", "indication_overlap", "_clean_inn",
+    ]),
     "nice": ("hta_nice.py", [
         "_guidance_status_category", "calculate_similarity_score",
         "has_tag_coverage", "resolve_keyword", "classify_historical_icer",
-        "format_historical_icer",
+        "format_historical_icer", "generate_assessment_pdf",
     ]),
     "chat": ("hta_chat.py", [
         "build_chat_context", "ask_chat", "research_questions_from_themes",
@@ -90,44 +86,37 @@ GROUPS = {
         "_anthropic_api_key", "_matches_by_record",
         "build_agency_chat_context", "render_agency_chat",
     ]),
-    "pdf": ("hta_pdf.py", [
-        "generate_assessment_pdf",
-    ]),
-    "cross": ("hta_cross_agency.py", [
+    "ui": ("hta_ui.py", [
         "prepare_agency_frame", "cross_agency_index", "agency_match_table",
         "find_same_molecule", "_cross_agency_lines",
         "render_nice_cross_agency",
-    ]),
-    "ui": ("hta_agency_ui.py", [
-        "outcome_order", "init_range_state",
-        "render_agency_switcher", "agency_sidebar_guide", "_explorer_key",
-        "_clear_agency_search", "_counted", "render_agency_explorer",
-        "run_agency_search", "_query_key", "_search_ranking",
-        "cached_agency_search", "describe_query", "render_agency_record",
-        "_block_subset", "render_synthesis_block", "render_economic_block",
-        "_coverage_line", "_integer_axis", "_style_bars",
-        "outcome_breakdown_table", "render_outcome_table",
-        "render_agency_charts", "_agency_footer", "_records_matched",
-        "_agency_export_bytes", "_supports_deferred_download",
-        "render_download", "_is_narrowed", "render_results_header",
-        "_section_nav", "_results_signature", "render_results_decisions",
-        "render_results_evidence", "render_results_other_bodies",
-        "render_agency_view",
+        "outcome_order", "init_range_state", "render_agency_switcher",
+        "agency_sidebar_guide", "_explorer_key", "_clear_agency_search",
+        "_counted", "render_agency_explorer", "run_agency_search",
+        "_query_key", "_search_ranking", "cached_agency_search",
+        "describe_query", "render_agency_record", "_block_subset",
+        "render_synthesis_block", "render_economic_block", "_coverage_line",
+        "_integer_axis", "_style_bars", "outcome_breakdown_table",
+        "render_outcome_table", "render_agency_charts", "_agency_footer",
+        "_records_matched", "_agency_export_bytes",
+        "_supports_deferred_download", "render_download", "_is_narrowed",
+        "render_results_header", "_section_nav", "_results_signature",
+        "render_results_decisions", "render_results_evidence",
+        "render_results_other_bodies", "render_agency_view",
     ]),
 }
 
 HEADERS = {
-    "hta_text.py": "Small text helpers: cleaning cell values, shortening, "
-                   "escaping for markdown, parsing dates.",
-    "hta_gba.py": "G-BA decision reading: benefit extent, evidence "
-                  "certainty, outcome labels and headline lines.",
-    "hta_has.py": "HAS decision reading: SMR and ASMR levels, early access, "
-                  "outcome labels and headline lines.",
-    "hta_taxonomy.py": "Classification: therapy areas, orphan status, "
-                       "procedure groups, condition labels, outcome "
-                       "families.",
-    "hta_query.py": "Query expansion: indication synonyms, molecule names, "
-                    "stopwords and the overlap scoring behind search.",
+    "hta_data.py": "Loading and caching the workbook, its sheets and the "
+                   "vocabulary.",
+    "hta_core.py": "Reading an HTA decision: text handling, G-BA and HAS "
+                   "outcomes, classification, and query expansion.",
+    "hta_nice.py": "Everything NICE-specific: similarity scoring, ICER "
+                   "classification, the PDF export and the NICE page.",
+    "hta_chat.py": "Both chat implementations, their prompts and the "
+                   "context they are given.",
+    "hta_ui.py": "The agency screens: explorer, record view, charts, "
+                 "results, export and cross-agency matching.",
 }
 
 
@@ -308,7 +297,8 @@ def imports_for(text, source):
 
 
 OPTIONAL_COMPANIONS = ["source_citations", "endpoint_panel",
-                       "evidence_filter", "nice_attributes", "nice_sections"]
+                       "evidence_filter", "nice_attributes", "nice_sections",
+                       "committee_quotes"]
 
 
 def optional_imports(text):
@@ -351,6 +341,41 @@ def sibling_imports(text, exclude):
         if any(re.search(rf"\b{re.escape(n)}\b", text) for n in names):
             out.append(f"from {mod} import *  # noqa: F401,F403")
     return out
+
+
+def move_nice_page(src, crlf):
+    """Wrap the trailing NICE page in a function and move it to hta_nice.py.
+
+    The last ~1,265 lines of app3.py are the original NICE page running as
+    straight-line module code. Nothing after it reads the names it assigns,
+    so wrapping it in a function makes those locals and changes nothing --
+    and it only reads one live value from outside, the dataframe, which
+    becomes its single argument.
+    """
+    lines = src.split("\n")
+    tree = ast.parse(src)
+    start = None
+    for node in tree.body:
+        chunk = "\n".join(lines[node.lineno - 1:node.end_lineno])
+        if "render_agency_view(HTA_BODY)" in chunk:
+            start = node.end_lineno
+    if start is None:
+        sys.exit("Could not find the agency dispatch; is this app3.py?")
+    block = lines[start:]
+    if not any(l.strip() for l in block):
+        print("Nothing after the dispatch — already moved?")
+        return None, None
+
+    body = "\n".join(("    " + l) if l.strip() else "" for l in block)
+    # TOTAL_ROWS is derived from the dataframe, so it is recomputed inside
+    # rather than carried across; VOCAB is live data and becomes the second
+    # argument.
+    func = ('\n\ndef render_nice_page(df, VOCAB):\n'
+            '    """The NICE page. Was straight-line module code in app3.py."""\n'
+            '    TOTAL_ROWS = len(df)\n'
+            + body + "\n")
+    remaining = "\n".join(lines[:start]) + "\n\nrender_nice_page(df, VOCAB)\n"
+    return func, remaining
 
 
 def verify_one(path):
@@ -415,6 +440,8 @@ def main():
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--verify", action="store_true")
     ap.add_argument("--revert", action="store_true")
+    ap.add_argument("--page", action="store_true",
+                    help="move the trailing NICE page into hta_nice.py")
     args = ap.parse_args()
 
     if args.list:
@@ -513,6 +540,42 @@ def main():
         print(f"  unresolved names: {len(missing)}")
         for name in missing[:20]:
             print(f"    {name}")
+        return
+
+    if args.page:
+        if not os.path.exists("hta_nice.py"):
+            sys.exit("Run --group nice first; the page joins that module.")
+        func, remaining = move_nice_page(flat, crlf)
+        if func is None:
+            return
+        target = read("hta_nice.py").replace("\r\n", "\n")
+        # The page reads from every other module and from the original
+        # import block; give it what it needs before merging.
+        head = []
+        for line in imports_for(func, flat):
+            if line not in target:
+                head.append(line)
+        for line in sibling_imports(func, "hta_nice.py"):
+            if line not in target:
+                head.append(line)
+        if head:
+            marker = target.index("\n\n", target.index('"""', 4) + 3)
+            target = (target[:marker] + "\n" + "\n".join(head)
+                      + target[marker:])
+        for name in OPTIONAL_COMPANIONS:
+            if re.search(rf"\b{name}\.", func) and \
+                    f"import {name}" not in target:
+                target += (f"\ntry:\n    import {name}\nexcept ImportError:"
+                           f"  # optional companion\n    {name} = None\n")
+        merged = target + func
+        compile(merged, "hta_nice.py", "exec")
+        compile(remaining, args.file, "exec")
+        if not os.path.exists(BACKUP):
+            shutil.copy(args.file, BACKUP)
+        write("hta_nice.py", merged.replace("\n", "\r\n") if crlf else merged)
+        write(args.file, remaining.replace("\n", "\r\n") if crlf else remaining)
+        print(f"  NICE page moved into hta_nice.py as render_nice_page(df)")
+        print(f"  {args.file} is now {len(remaining.splitlines()):,} lines")
         return
 
     if not args.group:
