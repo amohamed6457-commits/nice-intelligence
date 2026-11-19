@@ -1,0 +1,339 @@
+"""
+Real committee text for a theme, instead of a workbook stub.
+
+The problem this solves: the theme expanders in app3 quote whichever of
+original_nice_comment / detailed_reasoning / rejection_reasoning is non-empty,
+and the junk filter only rejects "", "nan", "not applicable" and "not
+specified". So a workbook cell containing "Negative recommendation." passes
+the filter and is displayed as though it were the committee's reasoning.
+
+It isn't reasoning. It's a label. Meanwhile the committee's actual words for
+that appraisal are sitting in the section index, numbered and citable.
+
+This module finds the section that genuinely discusses the theme and returns
+the committee's own sentences, with the section number and a deep link.
+
+Needs hta_index/keyword_index.json.gz (build_chapter_index.py --keyword).
+Degrades to None everywhere when that is absent, so the caller can keep its
+existing fallback.
+"""
+
+import json
+import os
+import re
+
+_HERE = os.path.dirname(os.path.abspath(__file__))
+
+INDEX_PATHS = [
+    os.path.join("hta_index", "keyword_index.json.gz"),
+    os.path.join(_HERE, "hta_index", "keyword_index.json.gz"),
+    os.path.join("hta_index", "keyword_index.json"),
+    os.path.join(_HERE, "hta_index", "keyword_index.json"),
+]
+
+# Theme label -> the words the committee actually uses when discussing it.
+# Matching on the label's own words fails: nobody writes "evidential or
+# modelling uncertainty" in a committee discussion.
+THEME_TERMS = {
+    "Cost-effectiveness exceeded acceptable NHS value": [
+        "cost effectiveness", "cost-effectiveness", "icer", "qaly",
+        "incremental", "threshold", "value for money", "acceptable use of nhs",
+    ],
+    "Evidential or modelling uncertainty": [
+        "uncertain", "uncertainty", "model", "modelling", "assumption",
+        "structural", "plausible", "robust", "sensitivity",
+    ],
+    "Immature survival / follow-up evidence": [
+        "immature", "median not reached", "follow-up", "follow up", "censoring",
+        "events", "data cut", "overall survival", "short duration",
+    ],
+    "Long-term extrapolation uncertainty": [
+        "extrapolat", "long term", "long-term", "curve", "parametric",
+        "weibull", "lognormal", "hazard", "time horizon", "beyond the trial",
+    ],
+    "Survival benefit not established": [
+        "overall survival", "survival benefit", "no difference",
+        "not statistically", "immature", "crossover", "unproven",
+    ],
+    "Treatment effect waning / durability uncertainty": [
+        "waning", "durability", "stopping rule", "treatment effect",
+        "continued benefit", "maintained", "loss of effect",
+    ],
+    "Population mismatch with retrieved precedent": [
+        "generalis", "generaliz", "nhs practice", "uk practice", "population",
+        "baseline characteristics", "trial population", "applicab",
+    ],
+    "Comparator not reflective of NHS practice": [
+        "comparator", "relevant comparator", "standard of care",
+        "established clinical management", "not used in the nhs",
+    ],
+    "Quality of life / utility uncertainty": [
+        "utility", "utilities", "quality of life", "eq-5d", "health state",
+        "hrqol", "mapping",
+    ],
+    "Subgroup or post-hoc analysis": [
+        "subgroup", "post hoc", "post-hoc", "exploratory", "not prespecified",
+    ],
+    "Indirect comparison limitations": [
+        "indirect", "naive", "naïve", "matching-adjusted", "maic", "itc",
+        "network meta", "nma", "unanchored",
+    ],
+}
+
+# Workbook values that look like reasoning and are not. The existing filter
+# catches blanks; these are the stubs that slip through and get rendered as a
+# quotation, which is worse than showing nothing.
+_STUB = re.compile(
+    r"^\W*("
+    r"(negative|positive|favourable|unfavourable)\s+recommendation"
+    r"|not?\s+recommend(ed|ation)?"
+    r"|recommend(ed|ation)?"
+    r"|optimis(ed|ing)\s+recommendation"
+    r"|(terminated|withdrawn|discontinued)(\s+(appraisal|guidance|by\s+\w+))?"
+    r"|rejected|approved|restricted"
+    r"|no\s+(reasoning|comment|detail|text)\s*(available|recorded|provided)?"
+    r"|see\s+(full\s+)?guidance"
+    r"|n/?a|none|unknown|not\s+(applicable|specified|recorded|stated|available)"
+    r")\W*$",
+    re.IGNORECASE)
+
+_CACHE = {"loaded": False, "by_ta": {}, "error": None}
+
+
+def _norm_ta(value):
+    if value is None:
+        return None
+    s = str(value).strip().upper()
+    m = re.search(r"TA[^0-9]{0,2}(\d+)", s) or re.fullmatch(r"\s*(\d+)\s*", s)
+    return (m.group(1).lstrip("0") or "0") if m else None
+
+
+def is_stub(text):
+    """True if this reads like a decision label rather than reasoning.
+
+    Short strings are judged by the pattern; anything over ~90 characters is
+    treated as real text even if it starts with "Not recommended", because by
+    then it is a sentence and not a label.
+    """
+    if text is None:
+        return True
+    s = str(text).strip()
+    if not s or s.lower() == "nan":
+        return True
+    # A value that ends in an ellipsis was cut off before it got here. On its
+    # own that does not make it a stub - a long truncated passage is still
+    # worth showing - but a SHORT one carries no information, like
+    # "At the time of appraisal, the technology was not considered to be an
+    # appropri...".
+    if s.rstrip().endswith(("...", "\u2026")) and len(s) <= 120:
+        return True
+    if len(s) > 90:
+        return False
+    return bool(_STUB.match(s))
+
+
+def load():
+    if _CACHE["loaded"]:
+        return _CACHE["by_ta"]
+    _CACHE["loaded"] = True
+
+    path = next((p for p in INDEX_PATHS if os.path.exists(p)), None)
+    if not path:
+        _CACHE["error"] = "keyword_index not found"
+        return {}
+    try:
+        if path.endswith(".gz"):
+            import gzip
+            with gzip.open(path, "rt", encoding="utf-8") as f:
+                records = json.load(f)
+        else:
+            with open(path, encoding="utf-8") as f:
+                records = json.load(f)
+    except (json.JSONDecodeError, OSError, EOFError) as e:
+        _CACHE["error"] = f"could not read index: {e}"
+        return {}
+
+    by_ta = {}
+    for rec in records:
+        md = rec.get("metadata", {}) or {}
+        ta = _norm_ta(md.get("ta", ""))
+        if not ta:
+            continue
+        by_ta.setdefault(ta, []).append({
+            "section": md.get("section", ""),
+            "headline": md.get("headline", ""),
+            "theme": md.get("theme", ""),
+            "url": md.get("url", ""),
+            "text": rec.get("text", ""),
+        })
+    _CACHE["by_ta"] = by_ta
+    return by_ta
+
+
+def available():
+    return bool(load())
+
+
+def status():
+    idx = load()
+    if not idx:
+        return f"Committee sections: unavailable ({_CACHE['error'] or 'unknown'})"
+    return (f"Committee sections: {sum(len(v) for v in idx.values()):,} "
+            f"across {len(idx)} appraisals")
+
+
+def _terms_for(theme_label):
+    """Search terms for a theme, falling back to the label's own content words."""
+    if theme_label in THEME_TERMS:
+        return THEME_TERMS[theme_label]
+    stop = {"the", "and", "for", "with", "not", "was", "were", "or", "of",
+            "to", "in", "a", "an"}
+    return [w for w in re.findall(r"[a-z]+", (theme_label or "").lower())
+            if len(w) > 3 and w not in stop]
+
+
+def _score(section, terms):
+    """Headline counts triple: NICE puts the committee's conclusion there."""
+    head = (section["headline"] + " " + section["theme"]).lower()
+    body = section["text"].lower()
+    return sum(3 * head.count(t) + body.count(t) for t in terms)
+
+
+def trim(text, limit):
+    """Cut at a sentence end if there is one, else a word boundary.
+
+    Never mid-word. A quote that stops at "were not acce" reads like a bug
+    even when the underlying text is complete.
+    """
+    s = str(text).strip()
+    if len(s) <= limit:
+        return s
+    window = s[:limit]
+    # Prefer the last sentence end in the last third of the window, so a
+    # single very long sentence does not collapse the quote to nothing.
+    end = max(window.rfind(". "), window.rfind("? "), window.rfind("! "))
+    if end > limit * 0.6:
+        return window[: end + 1]
+    return window.rsplit(" ", 1)[0].rstrip(",;:") + " …"
+
+
+def _best_sentences(text, terms, max_chars=900):
+    """The run of sentences that actually mentions the theme.
+
+    A section can be 2,000 characters of which two sentences are on point.
+    Truncating from the start usually misses them.
+    """
+    parts = re.split(r"(?<=[.!?])\s+", text.strip())
+    if not parts:
+        return text[:max_chars]
+    scored = [(sum(p.lower().count(t) for t in terms), i)
+              for i, p in enumerate(parts)]
+    best = max(scored)[1] if any(s for s, _ in scored) else 0
+
+    out, lo, hi = parts[best], best, best
+    # Grow outwards while there is room, preferring the following sentence
+    # because committee text states the point then the consequence.
+    while len(out) < max_chars:
+        nxt = parts[hi + 1] if hi + 1 < len(parts) else None
+        prv = parts[lo - 1] if lo > 0 else None
+        if nxt and len(out) + len(nxt) + 1 <= max_chars:
+            out, hi = out + " " + nxt, hi + 1
+        elif prv and len(out) + len(prv) + 1 <= max_chars:
+            out, lo = prv + " " + out, lo - 1
+        else:
+            break
+    prefix = "… " if lo > 0 else ""
+    suffix = " …" if hi < len(parts) - 1 else ""
+    return prefix + out.strip() + suffix
+
+
+def quote_for(appraisal_id, theme_label, max_chars=900, min_score=1):
+    """The committee's own words on this theme, or None.
+
+    Returns {'text', 'section', 'headline', 'url', 'citation'}.
+    None when nothing in the index is actually about this theme — the caller
+    should then say so rather than quote something unrelated.
+    """
+    ta = _norm_ta(appraisal_id)
+    if not ta:
+        return None
+    sections = load().get(ta)
+    if not sections:
+        return None
+
+    terms = _terms_for(theme_label)
+    ranked = sorted(sections, key=lambda s: -_score(s, terms))
+    top = ranked[0] if ranked else None
+    if not top or _score(top, terms) < min_score:
+        return None
+
+    return {
+        "text": _best_sentences(top["text"], terms, max_chars),
+        "section": top["section"],
+        "headline": top["headline"],
+        "url": top["url"],
+        "citation": f"TA{ta} section {top['section']}" if top["section"]
+                    else f"TA{ta}",
+    }
+
+
+def quotes_for(appraisal_id, theme_label, limit=2, max_chars=900):
+    """Up to `limit` distinct sections on this theme, best first."""
+    ta = _norm_ta(appraisal_id)
+    if not ta:
+        return []
+    sections = load().get(ta) or []
+    terms = _terms_for(theme_label)
+    ranked = [s for s in sorted(sections, key=lambda s: -_score(s, terms))
+              if _score(s, terms) > 0][:limit]
+    return [{
+        "text": _best_sentences(s["text"], terms, max_chars),
+        "section": s["section"],
+        "headline": s["headline"],
+        "url": s["url"],
+        "citation": f"TA{ta} section {s['section']}" if s["section"] else f"TA{ta}",
+    } for s in ranked]
+
+
+def render_theme_evidence(appraisal_id, theme_label, fallback_text=None,
+                          limit=1, max_chars=900, fallback_chars=1600,
+                          **_ignored):
+    # **_ignored so a newer app3 calling with an argument this version does
+    # not know about degrades instead of raising TypeError mid-render. The
+    # two files are deployed separately and will drift.
+    """Streamlit block for one appraisal under one theme.
+
+    Order of preference:
+      1. the committee's own words from the indexed discussion, cited
+      2. the workbook's reasoning text, but only if it is not a stub
+      3. an honest statement that there is nothing to quote
+    """
+    import streamlit as st
+
+    found = quotes_for(appraisal_id, theme_label, limit=limit,
+                       max_chars=max_chars)
+    if found:
+        for q in found:
+            head = f"**{appraisal_id}** · {q['citation']}"
+            if q["headline"]:
+                head += f" — {q['headline']}"
+            st.markdown(head)
+            st.markdown(f"> {q['text']}")
+            if q["url"]:
+                st.caption(f"[Read this section on nice.org.uk ↗]({q['url']})")
+        return True
+
+    st.markdown(f"**{appraisal_id}**")
+    if fallback_text is not None and not is_stub(fallback_text):
+        # The workbook summaries run to ~900 characters of real reasoning.
+        # They are inside an expander the reader chose to open, so show the
+        # whole thing rather than a teaser.
+        st.markdown(f"> {trim(fallback_text, fallback_chars)}")
+        st.caption("From the appraisal record, not the committee discussion.")
+        return True
+
+    st.caption(
+        "No committee discussion indexed for this appraisal that addresses "
+        "this theme. The record's own text is a decision label, not reasoning, "
+        "so nothing is quoted here.")
+    return False
