@@ -320,6 +320,30 @@ for _state_key in [k for k in st.session_state.keys() if str(k).startswith("w_")
     st.session_state[_state_key] = st.session_state[_state_key]
 
 
+# --- Search rate limit (optional) --------------------------------------
+try:
+    import search_limiter as limiter
+    if not hasattr(limiter, "consume"):
+        raise ImportError("search_limiter resolved to a namespace package")
+except (ImportError, AttributeError):
+    class _NoLimit:
+        LIMIT = 0
+
+        @staticmethod
+        def consume(*a, **k):
+            return True, 0, 0.0
+
+        @staticmethod
+        def render_quota(*a, **k):
+            return None
+
+        @staticmethod
+        def block_message(*a, **k):
+            return None
+
+    limiter = _NoLimit()
+
+
 # --- HAS clinical endpoints (optional) ---------------------------------
 # Same defensive shape as the modules above: a deployment without
 # has_endpoints_panel.py or has_endpoints_full.json must still run.
@@ -3549,11 +3573,18 @@ def render_agency_explorer(agency, frame):
         b2.form_submit_button("Clear", on_click=_clear_agency_search, args=(slug,),
                               width="stretch")
 
+    limiter.render_quota()
+
     if submitted:
-        st.session_state[f"{slug}_query"] = {
-            field: st.session_state.get(_explorer_key(slug, field)) for field in EXPLORER_FIELDS}
-        # A new search opens on its decisions, not on the section last viewed.
-        st.session_state[f"w_{slug}_section"] = RESULTS_SECTIONS[0]
+        allowed, _remaining, wait = limiter.consume()
+        if allowed:
+            st.session_state[f"{slug}_query"] = {
+                field: st.session_state.get(_explorer_key(slug, field))
+                for field in EXPLORER_FIELDS}
+            # A new search opens on its decisions, not the last section viewed.
+            st.session_state[f"w_{slug}_section"] = RESULTS_SECTIONS[0]
+        else:
+            limiter.block_message(wait)
     return st.session_state.get(f"{slug}_query") or {}
 
 
