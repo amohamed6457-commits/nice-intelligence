@@ -1,0 +1,23 @@
+{
+ "built": "2026-11-27T11:19:18",
+ "workbook": "NICE_HAS_GBA_updated_2026-11-07.xlsx",
+ "workbook_mtime": 1794233562.297323,
+ "sheets": {
+  "Sheet1": "Sheet1.parquet",
+  "Enrichment_Log": "Enrichment_Log.parquet",
+  "Tag_Vocabulary": "Tag_Vocabulary.parquet",
+  "HAS_Recent": "HAS_Recent.parquet",
+  "G-BA_Recent": "G-BA_Recent.parquet",
+  "Appraisal_Documents": "Appraisal_Documents.parquet",
+  "GBA_Subgroups": "GBA_Subgroups.parquet",
+  "HAS_Ratings": "HAS_Ratings.parquet",
+  "HAS_Public_Prices": "HAS_Public_Prices.parquet",
+  "HAS_Price_Links": "HAS_Price_Links.parquet",
+  "Economic_Findings": "Economic_Findings.parquet",
+  "HAS_Economic_Pages": "HAS_Economic_Pages.parquet",
+  "GBA_Treatment_Costs": "GBA_Treatment_Costs.parquet",
+  "GBA_Decision_Passages": "GBA_Decision_Passages.parquet",
+  "Coverage": "Coverage.parquet"
+ },
+ "endpoints": "has_endpoints.parquet"
+}

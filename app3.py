@@ -1,5 +1,6 @@
 import inspect
 import io
+import json
 import os
 import re
 import warnings
@@ -270,9 +271,15 @@ def data_version():
     serving rows cached from the old file.
     """
     try:
-        return (DATA_FILE, os.path.getmtime(DATA_FILE))
+        stamp = os.path.getmtime(DATA_FILE)
     except OSError:
-        return (DATA_FILE, None)
+        stamp = None
+    try:
+        stamp = (stamp, os.path.getmtime(os.path.join(PARQUET_DIR,
+                                                      "manifest.json")))
+    except OSError:
+        pass
+    return (DATA_FILE, stamp)
 
 
 @st.cache_resource
@@ -298,7 +305,38 @@ def _workbook(version):
         return pd.ExcelFile(path)
 
 
+PARQUET_DIR = "data_parquet"
+
+
+def _parquet_manifest():
+    """The prebuilt Parquet copy of the workbook, if it is present and not
+    older than the workbook itself. Reading a sheet from Parquet is roughly
+    fifty times faster than parsing it out of the .xlsx, which is most of a
+    cold start on Streamlit Cloud. A stale or missing build is ignored, so
+    the workbook always remains the source of truth."""
+    path = os.path.join(PARQUET_DIR, "manifest.json")
+    try:
+        with open(path, encoding="utf-8") as fh:
+            manifest = json.load(fh)
+        built_for = manifest.get("workbook_mtime")
+        if built_for is None:
+            return None
+        if os.path.getmtime(DATA_FILE) > float(built_for) + 1:
+            return None
+        return manifest
+    except (OSError, ValueError, TypeError):
+        return None
+
+
 def _read_sheet(version, sheet_name):
+    manifest = _parquet_manifest()
+    if manifest:
+        name = (manifest.get("sheets") or {}).get(sheet_name)
+        if name:
+            try:
+                return pd.read_parquet(os.path.join(PARQUET_DIR, name))
+            except Exception:
+                pass
     return _workbook(version).parse(sheet_name)
 
 st.set_page_config(
@@ -1472,6 +1510,12 @@ def load_agency_sheet(sheet_name, version):
 @st.cache_data
 def load_has_endpoints(version):
     """Extracted HAS clinical endpoints. Absent file yields an empty frame."""
+    fast = os.path.join(PARQUET_DIR, "has_endpoints.parquet")
+    if _parquet_manifest() and os.path.exists(fast):
+        try:
+            return pd.read_parquet(fast)
+        except Exception:
+            pass
     try:
         return hep.read_endpoints("has_endpoints_full.json")
     except Exception:
@@ -4394,8 +4438,9 @@ def render_results_decisions(agency, version, results, docs, matches, query):
     if agency == "HAS":
         _counts = hep.endpoint_counts(load_has_endpoints(version))
         if _counts:
-            table["Endpoints"] = [hep.count_for_row(_counts, r)
-                                  for _, r in results.iterrows()]
+            _col = hep.counts_for_frame(_counts, results)
+            if _col is not None:
+                table["Endpoints"] = _col.to_numpy()
     table["Source"] = results["official_source_url"]
     event = st.dataframe(
         table.reset_index(drop=True),

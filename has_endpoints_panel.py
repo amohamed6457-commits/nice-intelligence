@@ -246,6 +246,36 @@ def count_for_row(counts, row):
     return sum(counts.get(k, 0) for k in tokens_from_row(row))
 
 
+MULTI = re.compile(r"CT[\s_-]*\d{3,6}.*CT[\s_-]*\d{3,6}", re.IGNORECASE)
+
+
+def counts_for_frame(counts, frame):
+    """Endpoint count per row, vectorised. The per-row regex path is kept
+    only for the handful of rows naming more than one CT dossier."""
+    if frame is None or not hasattr(frame, "columns"):
+        return None
+    cols = id_columns(frame)
+    if not cols or not counts:
+        return pd.Series(0, index=frame.index, dtype="int64")
+    total = pd.Series(0, index=frame.index, dtype="int64")
+    needs_slow = pd.Series(False, index=frame.index)
+    seen = []
+    for col in cols:
+        text = frame[col].astype(str)
+        key = text.str.upper().str.replace(r"[^A-Z0-9]", "", regex=True)
+        add = key.map(counts).fillna(0).astype("int64")
+        for prior in seen:
+            add = add.where(key != prior, 0)
+        seen.append(key)
+        total = total.add(add, fill_value=0).astype("int64")
+        needs_slow |= text.str.contains(MULTI, na=False)
+    if needs_slow.any():
+        slow = frame.loc[needs_slow]
+        total.loc[needs_slow] = [count_for_row(counts, r)
+                                 for _, r in slow.iterrows()]
+    return total
+
+
 def _selected_row(event, frame):
     try:
         picked = list(event.selection.rows)
